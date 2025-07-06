@@ -3,6 +3,10 @@ export interface LoginResponse {
   refresh: string;
 }
 
+export interface RefreshResponse {
+  access: string;
+}
+
 export interface ToastMessageData {
   id: number;
   message: string;
