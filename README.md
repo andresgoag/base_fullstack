@@ -23,7 +23,7 @@ This project is a fullstack application. The `frontend` directory contains a web
    ```
 2. Install dependencies:
    ```bash
-   npm install
+   bun install
    ```
 
 ## How to Run the project
@@ -48,7 +48,7 @@ This will build and start all services defined in `docker-compose.yml`
 
 2. Start the development server:
    ```bash
-   npm run dev
+   bun run dev
    ```
 
 ## Linting
@@ -57,7 +57,7 @@ To check code quality with ESLint:
 
 ```bash
 cd frontend
-npm run lint
+bun run lint
 ```
 
 ## Backend install libraries
