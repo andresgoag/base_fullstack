@@ -15,5 +15,5 @@ createRoot(document.getElementById("root")!).render(
         <Router />
       </ToastContextProvider>
     </QueryClientProvider>
-  </StrictMode>
+  </StrictMode>,
 );
