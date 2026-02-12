@@ -58,7 +58,7 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
 
   const { mutate: refreshAccess } = useMutation({
     mutationFn: refreshToken,
-    onSuccess: data => {
+    onSuccess: (data) => {
       setAccess(data.access);
     },
     onError: (error: Error) => {
@@ -72,7 +72,7 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
 
   const { mutate: getCurrentUser } = useMutation({
     mutationFn: getUser,
-    onSuccess: user => {
+    onSuccess: (user) => {
       setCurrentUser(user);
     },
     onError: (error: Error) => {
@@ -92,7 +92,8 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
     if (!storedRefresh) return;
     setRefresh(storedRefresh);
     refreshAccess(storedRefresh);
-  }, [refreshAccess]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!refresh) return;
@@ -100,12 +101,14 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
       refreshAccess(refresh);
     }, ACCESS_LIFETIME * 1000);
     return () => clearTimeout(timeout);
-  }, [access, refresh, refreshAccess]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access, refresh]);
 
   useEffect(() => {
     if (!access) return;
     getCurrentUser(access);
-  }, [access, getCurrentUser]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [access]);
 
   return (
     <AuthContext.Provider

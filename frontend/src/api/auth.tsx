@@ -12,7 +12,7 @@ export const loginUser = async (data: LoginData): Promise<LoginResponse> => {
   try {
     const response = await axios.post<LoginResponse>(
       `${API_BASE_URL}/auth/jwt/create/`,
-      data
+      data,
     );
     return response.data;
   } catch (error) {
@@ -25,12 +25,12 @@ export const loginUser = async (data: LoginData): Promise<LoginResponse> => {
 };
 
 export const registerUser = async (
-  data: RegisterData
+  data: RegisterData,
 ): Promise<RegisterResponse> => {
   try {
     const response = await axios.post<RegisterResponse>(
       `${API_BASE_URL}/auth/users/`,
-      data
+      data,
     );
     return response.data;
   } catch (error) {
@@ -43,12 +43,12 @@ export const registerUser = async (
 };
 
 export const refreshToken = async (
-  refresh: string
+  refresh: string,
 ): Promise<RefreshResponse> => {
   try {
     const response = await axios.post<LoginResponse>(
       `${API_BASE_URL}/auth/jwt/refresh/`,
-      { refresh }
+      { refresh },
     );
     return response.data;
   } catch (error) {
@@ -71,7 +71,7 @@ export const getUser = async (accessToken: string): Promise<User> => {
   } catch (error) {
     if (axios.isAxiosError(error)) {
       throw new Error(
-        error.response?.data?.detail || "Failed to fetch user data"
+        error.response?.data?.detail || "Failed to fetch user data",
       );
     } else {
       throw new Error("An unexpected error occurred while fetching user data");

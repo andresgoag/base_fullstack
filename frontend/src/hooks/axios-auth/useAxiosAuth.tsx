@@ -13,7 +13,7 @@ export const useAxiosAuth = () => {
       baseURL: API_BASE_URL,
     });
     instance.interceptors.request.use(
-      config => {
+      (config) => {
         if (!access) {
           showToast({
             type: "danger",
@@ -25,7 +25,7 @@ export const useAxiosAuth = () => {
         config.headers["Authorization"] = `Bearer ${access}`;
         return config;
       },
-      error => Promise.reject(error)
+      (error) => Promise.reject(error),
     );
     return instance;
   }, [access, showToast]);
