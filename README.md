@@ -65,3 +65,5 @@ bun run lint
 ```bash
 uv add requests
 ```
+
+change the secret key in the settings to an environment variable when used in prod
