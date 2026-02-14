@@ -6,23 +6,26 @@ import { ProtectedRoute } from "./components/ProtectedRoute/ProtectedRoute";
 import { Dashboard } from "pages/Dashboard/Dashboard";
 import { AuthContextProvider } from "context/auth/AuthContextProvider.tsx";
 import { RegisterForm } from "pages/Auth/Register";
+import { WebSocketContextProvider } from "context/websocket/WebSocketContextProvider";
 
 const Router = () => {
   return (
     <BrowserRouter>
       <AuthContextProvider>
-        <Routes>
-          <Route path="/home" element={<Home />} />
+        <WebSocketContextProvider>
+          <Routes>
+            <Route path="/home" element={<Home />} />
 
-          <Route path="/auth" element={<AuthLayout />}>
-            <Route path="login" element={<LoginForm />} />
-            <Route path="register" element={<RegisterForm />} />
-          </Route>
+            <Route path="/auth" element={<AuthLayout />}>
+              <Route path="login" element={<LoginForm />} />
+              <Route path="register" element={<RegisterForm />} />
+            </Route>
 
-          <Route path="/" element={<ProtectedRoute />}>
-            <Route path="dashboard" element={<Dashboard />} />
-          </Route>
-        </Routes>
+            <Route path="/" element={<ProtectedRoute />}>
+              <Route path="dashboard" element={<Dashboard />} />
+            </Route>
+          </Routes>
+        </WebSocketContextProvider>
       </AuthContextProvider>
     </BrowserRouter>
   );
