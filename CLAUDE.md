@@ -9,7 +9,7 @@ Fullstack application with Django REST backend and React/TypeScript frontend. Us
 ## Architecture
 
 ### Backend (Django)
-- **Tech Stack**: Django 6.0.2+, Django REST Framework, Djoser for auth, SimpleJWT
+- **Tech Stack**: Django 5.2+, Django REST Framework, Djoser for auth, SimpleJWT
 - **Package Manager**: `uv` (fast Python package installer)
 - **Database**: PostgreSQL with pgvector extension
 - **Authentication**: JWT-based (access/refresh tokens) via Djoser endpoints
