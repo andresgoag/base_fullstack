@@ -8,6 +8,10 @@ interface EchoMessage {
   timestamp: string;
 }
 
+const generateMessageId = (msg: EchoMessage): string => {
+  return `${msg.timestamp}-${msg.username}-${msg.message}`;
+};
+
 export const EchoChat = () => {
   const { socket, isConnected, sendEcho } = useWebSocketContext();
   const [message, setMessage] = useState("");
@@ -55,8 +59,8 @@ export const EchoChat = () => {
               No messages yet. Send a message to see the echo!
             </ListGroup.Item>
           ) : (
-            messages.map((msg, idx) => (
-              <ListGroup.Item key={idx}>
+            messages.map((msg) => (
+              <ListGroup.Item key={generateMessageId(msg)}>
                 <div className="d-flex justify-content-between">
                   <div>
                     <strong>{msg.username}:</strong> {msg.message}
@@ -79,6 +83,11 @@ export const EchoChat = () => {
               onChange={(e) => setMessage(e.target.value)}
               disabled={!isConnected}
             />
+            {!isConnected && (
+              <Form.Text className="text-muted">
+                Connect to WebSocket to send messages
+              </Form.Text>
+            )}
           </Form.Group>
           <Button
             type="submit"
