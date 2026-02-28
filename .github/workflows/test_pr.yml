@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -20,7 +20,7 @@ jobs:
         run: docker compose build
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -39,9 +39,11 @@ jobs:
 
       - name: Wait for postgres to be healthy
         run: |
-          until docker compose exec -T postgres pg_isready -U postgres; do
+          for i in $(seq 1 30); do
+            docker compose exec -T postgres pg_isready -U postgres && break
             sleep 1
           done
+          docker compose exec -T postgres pg_isready -U postgres
 
       - name: Run pytest
         env:

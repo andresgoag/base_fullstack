@@ -36,6 +36,8 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:dev_password@postgres:5432/postgres
+      ACCESS_LIFETIME: ${ACCESS_LIFETIME:-300}
+      REFRESH_LIFETIME: ${REFRESH_LIFETIME:-604800}
 
   frontend:
     build:
