@@ -21,6 +21,7 @@ jobs:
 
   test:
     runs-on: ubuntu-24.04
+    needs: [build]
     steps:
       - uses: actions/checkout@v4
 
@@ -28,25 +29,8 @@ jobs:
 
       - uses: crazy-max/ghaction-github-runtime@v3
 
-      - name: Build backend service
-        run: docker compose build backend
-
-      - name: Start postgres and backend
-        env:
-          ACCESS_LIFETIME: 300
-          REFRESH_LIFETIME: 604800
-        run: docker compose up -d postgres backend
-
-      - name: Wait for postgres to be healthy
-        run: |
-          for i in $(seq 1 30); do
-            docker compose exec -T postgres pg_isready -U postgres && break
-            sleep 1
-          done
-          docker compose exec -T postgres pg_isready -U postgres
-
       - name: Run pytest
         env:
           ACCESS_LIFETIME: 300
           REFRESH_LIFETIME: 604800
-        run: docker compose exec -T backend uv run pytest
+        run: docker compose run --rm backend uv run pytest
