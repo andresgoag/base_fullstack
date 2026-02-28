@@ -16,10 +16,16 @@ services:
       - "5432:5432"
 
   backend:
-    build: backend
+    build:
+      context: backend
+      cache_from:
+        - type=gha
+      cache_to:
+        - type=gha,mode=max
     command: ["uv", "run", "manage.py", "runserver", "0.0.0.0:8000"]
     env_file:
-      - .env
+      - path: .env
+        required: false
     volumes:
       - ./backend:/app
       - /app/.venv
@@ -35,6 +41,10 @@ services:
     build:
       context: frontend
       dockerfile: Dockerfile.dev
+      cache_from:
+        - type=gha
+      cache_to:
+        - type=gha,mode=max
     command: ["bun", "run", "dev", "--", "--host"]
     volumes:
       - ./frontend:/app
