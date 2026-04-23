@@ -1,27 +1,67 @@
 import { AuthContext } from "./AuthContext";
 import { useState, useEffect, useCallback } from "react";
-import { ACCESS_LIFETIME } from "config";
 import type { LoginResponse, User } from "models";
 import { useToastContext } from "context/toast/ToastContext";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
-import { loginUser, registerUser, refreshToken, getUser } from "api/auth";
-
-export type LoginProps = {
-  onSuccess: (data: LoginResponse) => void;
-  onError?: (error: Error) => void;
-};
+import {
+  loginUser,
+  registerUser,
+  refreshToken,
+  getUser,
+  blacklistToken,
+} from "api/auth";
 
 type ContextProps = {
   children: React.ReactNode;
 };
 
+const getTokenExp = (token: string): number => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.exp * 1000;
+  } catch {
+    return 0;
+  }
+};
+
 export const AuthContextProvider = ({ children }: ContextProps) => {
   const [access, setAccess] = useState<string | null>(null);
   const [refresh, setRefresh] = useState<string | null>(null);
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
   const { showToast } = useToastContext();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const logout = useCallback(() => {
+    const storedRefresh = localStorage.getItem("refresh");
+    localStorage.removeItem("refresh");
+    setAccess(null);
+    setRefresh(null);
+    queryClient.removeQueries({ queryKey: ["me"] });
+    if (storedRefresh) {
+      blacklistToken(storedRefresh).catch(() => {});
+    }
+    navigate("/auth/login");
+  }, [navigate, queryClient]);
+
+  const { mutate: refreshAccess } = useMutation({
+    mutationFn: refreshToken,
+    onSuccess: (data) => {
+      setAccess(data.access);
+      if ((data as LoginResponse).refresh) {
+        localStorage.setItem("refresh", (data as LoginResponse).refresh);
+        setRefresh((data as LoginResponse).refresh);
+      }
+    },
+    onError: (error: Error) => {
+      showToast({
+        message: `${error.message}, please log in again.`,
+        type: "danger",
+      });
+      logout();
+    },
+  });
 
   const {
     mutate: login,
@@ -56,59 +96,50 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
     },
   });
 
-  const { mutate: refreshAccess } = useMutation({
-    mutationFn: refreshToken,
-    onSuccess: (data) => {
-      setAccess(data.access);
-    },
-    onError: (error: Error) => {
-      showToast({
-        message: `${error.message}, please log in again.`,
-        type: "danger",
-      });
-      logout();
-    },
+  const { data: currentUser, isLoading: isLoadingUser } = useQuery<User>({
+    queryKey: ["me", access],
+    queryFn: () => getUser(access!),
+    enabled: !!access,
+    staleTime: 60_000,
   });
-
-  const { mutate: getCurrentUser } = useMutation({
-    mutationFn: getUser,
-    onSuccess: (user) => {
-      setCurrentUser(user);
-    },
-    onError: (error: Error) => {
-      showToast({ message: error.message, type: "danger" });
-    },
-  });
-
-  const logout = useCallback(() => {
-    localStorage.removeItem("refresh");
-    setAccess(null);
-    setRefresh(null);
-    navigate("/auth/login");
-  }, [navigate]);
 
   useEffect(() => {
     const storedRefresh = localStorage.getItem("refresh");
-    if (!storedRefresh) return;
+    if (!storedRefresh) {
+      setIsInitializing(false);
+      return;
+    }
     setRefresh(storedRefresh);
-    refreshAccess(storedRefresh);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    refreshToken(storedRefresh)
+      .then((data) => {
+        setAccess(data.access);
+        if ((data as LoginResponse).refresh) {
+          localStorage.setItem("refresh", (data as LoginResponse).refresh);
+          setRefresh((data as LoginResponse).refresh);
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem("refresh");
+        setRefresh(null);
+      })
+      .finally(() => {
+        setIsInitializing(false);
+      });
   }, []);
 
   useEffect(() => {
-    if (!refresh) return;
+    if (!access || !refresh) return;
+    const exp = getTokenExp(access);
+    const delay = exp - Date.now() - 30_000;
+    if (delay <= 0) {
+      refreshAccess(refresh);
+      return;
+    }
     const timeout = setTimeout(() => {
       refreshAccess(refresh);
-    }, ACCESS_LIFETIME * 1000);
+    }, delay);
     return () => clearTimeout(timeout);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [access, refresh]);
-
-  useEffect(() => {
-    if (!access) return;
-    getCurrentUser(access);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [access]);
+  }, [access, refresh, refreshAccess]);
 
   return (
     <AuthContext.Provider
@@ -120,11 +151,13 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
         isErrorLogin,
         errorLogin,
         logout,
-        currentUser,
+        currentUser: currentUser ?? null,
+        isLoadingUser,
         register,
         isPendingRegister,
         isErrorRegister,
         errorRegister,
+        isInitializing,
       }}
     >
       {children}

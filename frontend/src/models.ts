@@ -5,6 +5,7 @@ export interface LoginResponse {
 
 export interface RefreshResponse {
   access: string;
+  refresh?: string;
 }
 
 export interface ToastMessageData {
@@ -17,16 +18,8 @@ export interface ToastMessageData {
 
 export interface User {
   id: number;
-  username: string;
   email: string;
-  first_name: string;
-  last_name: string;
-}
-
-export interface RegisterResponse {
-  id: number;
-  username: string;
-  email: string;
+  phone: string;
   first_name: string;
   last_name: string;
 }
