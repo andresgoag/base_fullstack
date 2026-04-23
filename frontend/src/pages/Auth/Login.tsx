@@ -1,23 +1,19 @@
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
 import { useAuthContext } from "context/auth/AuthContext";
-
-type LoginFormValues = {
-  email: string;
-  password: string;
-};
+import type { LoginData } from "context/auth/AuthContext";
 
 export const LoginForm: React.FC = () => {
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormValues>();
+  } = useForm<LoginData>();
 
   const { login, isPendingLogin } = useAuthContext();
 
-  const onSubmit = (data: LoginFormValues) => {
-    login({ ...data, username: data.email });
+  const onSubmit = (data: LoginData) => {
+    login(data);
   };
 
   return (

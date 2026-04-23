@@ -1,11 +1,14 @@
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { Link } from "react-router";
 import { useAuthContext } from "context/auth/AuthContext";
+import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
+import "react-phone-number-input/style.css";
 
 type RegisterFormValues = {
   first_name: string;
   last_name: string;
   email: string;
+  phone: string;
   password: string;
 };
 
@@ -13,13 +16,14 @@ export const RegisterForm: React.FC = () => {
   const {
     register,
     handleSubmit,
+    control,
     formState: { errors },
   } = useForm<RegisterFormValues>();
 
   const { register: registerUser, isPendingRegister } = useAuthContext();
 
   const onSubmit = (data: RegisterFormValues) => {
-    registerUser({ ...data, username: data.email, re_password: data.password });
+    registerUser({ ...data, re_password: data.password });
   };
 
   return (
@@ -34,9 +38,7 @@ export const RegisterForm: React.FC = () => {
             type="text"
             className="form-control"
             id="first_name"
-            {...register("first_name", {
-              required: "Name is required.",
-            })}
+            {...register("first_name", { required: "Name is required." })}
           />
           <p className="text-danger">{errors.first_name?.message}</p>
         </div>
@@ -49,9 +51,7 @@ export const RegisterForm: React.FC = () => {
             type="text"
             className="form-control"
             id="last_name"
-            {...register("last_name", {
-              required: "Last name is required.",
-            })}
+            {...register("last_name", { required: "Last name is required." })}
           />
           <p className="text-danger">{errors.last_name?.message}</p>
         </div>
@@ -76,6 +76,33 @@ export const RegisterForm: React.FC = () => {
         </div>
 
         <div className="mb-3">
+          <label htmlFor="phone" className="form-label">
+            Phone Number
+          </label>
+          <Controller
+            name="phone"
+            control={control}
+            rules={{
+              required: "Phone number is required.",
+              validate: (value) =>
+                isValidPhoneNumber(value || "") ||
+                "Enter a valid international phone number",
+            }}
+            render={({ field: { onChange, value } }) => (
+              <PhoneInput
+                international
+                defaultCountry="US"
+                value={value}
+                onChange={onChange}
+                className="form-control"
+                id="phone"
+              />
+            )}
+          />
+          <p className="text-danger">{errors.phone?.message}</p>
+        </div>
+
+        <div className="mb-3">
           <label htmlFor="password" className="form-label">
             Password
           </label>
@@ -83,9 +110,7 @@ export const RegisterForm: React.FC = () => {
             type="password"
             className="form-control"
             id="password"
-            {...register("password", {
-              required: "Password is required.",
-            })}
+            {...register("password", { required: "Password is required." })}
           />
           <p className="text-danger">{errors.password?.message}</p>
         </div>
