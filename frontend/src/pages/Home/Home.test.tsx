@@ -7,7 +7,7 @@ describe("Home", () => {
     render(
       <MemoryRouter>
         <Home />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
     expect(screen.getByText("Welcome to the Home Page")).toBeInTheDocument();
   });
@@ -16,7 +16,7 @@ describe("Home", () => {
     render(
       <MemoryRouter>
         <Home />
-      </MemoryRouter>
+      </MemoryRouter>,
     );
     expect(screen.getByRole("link", { name: "Login" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Register" })).toBeInTheDocument();
