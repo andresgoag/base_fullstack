@@ -2,7 +2,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     volumes:
-      - bitewise_postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
@@ -22,13 +22,11 @@ services:
         - type=gha
       cache_to:
         - type=gha,mode=max
-    command: ["uv", "run", "manage.py", "runserver", "0.0.0.0:8000"]
-    env_file:
-      - path: .env
-        required: false
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    env_file: .env
     volumes:
       - ./backend:/app
-      - /app/.venv
+      - backend_uv_venv:/app/.venv
     ports:
       - "8000:8000"
     depends_on:
@@ -56,4 +54,5 @@ services:
 
 volumes:
   frontend_node_modules:
-  bitewise_postgres:
+  postgres_data:
+  backend_uv_venv:
