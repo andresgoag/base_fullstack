@@ -1,0 +1,58 @@
+# testing cache
+name: test_pr
+
+on:
+  workflow_call:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: crazy-max/ghaction-github-runtime@v3
+      - name: Build all services
+        run: docker compose build
+
+  test-backend:
+    runs-on: ubuntu-24.04
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: crazy-max/ghaction-github-runtime@v3
+      - name: Create .env file
+        env:
+          ACCESS_LIFETIME: 300
+          REFRESH_LIFETIME: 604800
+        run: |
+          env_vars=(
+            ACCESS_LIFETIME
+            REFRESH_LIFETIME
+          )
+          for var_name in "${env_vars[@]}"; do
+            echo "${var_name}=${!var_name}" >> .env
+          done
+      - name: Check black formatting
+        run: docker compose run --no-deps --rm backend black --check .
+      - name: Run flake8
+        run: docker compose run --no-deps --rm backend flake8 .
+      - name: Run pytest
+        run: docker compose run --rm backend pytest
+
+  test-frontend:
+    runs-on: ubuntu-24.04
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: crazy-max/ghaction-github-runtime@v3
+      - name: Run eslint
+        run: docker compose run --no-deps --rm frontend bun run lint
+      - name: Check prettier formatting
+        run: docker compose run --no-deps --rm frontend bun run format:check
+      - name: Run vitest
+        run: docker compose run --rm frontend bun run test

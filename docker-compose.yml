@@ -2,7 +2,7 @@ services:
   postgres:
     image: pgvector/pgvector:pg16
     volumes:
-      - bitewise_postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: postgres
       POSTGRES_USER: postgres
@@ -16,13 +16,17 @@ services:
       - "5432:5432"
 
   backend:
-    build: backend
-    command: ["uv", "run", "manage.py", "runserver", "0.0.0.0:8000"]
-    env_file:
-      - .env
+    build:
+      context: backend
+      cache_from:
+        - type=gha
+      cache_to:
+        - type=gha,mode=max
+    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    env_file: .env
     volumes:
       - ./backend:/app
-      - /app/.venv
+      - backend_uv_venv:/app/.venv
     ports:
       - "8000:8000"
     depends_on:
@@ -30,11 +34,17 @@ services:
         condition: service_healthy
     environment:
       DATABASE_URL: postgresql://postgres:dev_password@postgres:5432/postgres
+      ACCESS_LIFETIME: ${ACCESS_LIFETIME:-300}
+      REFRESH_LIFETIME: ${REFRESH_LIFETIME:-604800}
 
   frontend:
     build:
       context: frontend
       dockerfile: Dockerfile.dev
+      cache_from:
+        - type=gha
+      cache_to:
+        - type=gha,mode=max
     command: ["bun", "run", "dev", "--", "--host"]
     volumes:
       - ./frontend:/app
@@ -44,4 +54,5 @@ services:
 
 volumes:
   frontend_node_modules:
-  bitewise_postgres:
+  postgres_data:
+  backend_uv_venv:
