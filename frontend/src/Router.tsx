@@ -4,6 +4,7 @@ import { AuthLayout } from "./pages/Auth/Layout";
 import { LoginForm } from "./pages/Auth/Login";
 import { ProtectedRoute } from "./components/ProtectedRoute/ProtectedRoute";
 import { Dashboard } from "pages/Dashboard/Dashboard";
+import { WebSocketDemo } from "pages/Dashboard/WebSocketDemo";
 import { AuthContextProvider } from "context/auth/AuthContextProvider";
 import { RegisterForm } from "pages/Auth/Register";
 
@@ -21,6 +22,7 @@ const Router = () => {
 
           <Route path="/" element={<ProtectedRoute />}>
             <Route path="dashboard" element={<Dashboard />} />
+            <Route path="dashboard/websocket" element={<WebSocketDemo />} />
           </Route>
         </Routes>
       </AuthContextProvider>
