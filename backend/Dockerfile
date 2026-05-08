@@ -9,7 +9,7 @@ RUN mkdir -p ${APP_DIR}
 
 WORKDIR ${APP_DIR}
 COPY pyproject.toml uv.lock ${APP_DIR}
-RUN uv sync --locked
+RUN uv sync
 ENV PATH="/app/.venv/bin:$PATH"
 
 COPY . ${APP_DIR}

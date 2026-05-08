@@ -23,6 +23,8 @@ INSTALLED_APPS = [
     "djoser",
     "phonenumber_field",
     "user",
+    "channels",
+    "websocket",
 ]
 
 MIDDLEWARE = [
@@ -54,6 +56,17 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "backend.wsgi.application"
+
+ASGI_APPLICATION = "backend.asgi.application"
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [env("CHANNEL_LAYERS_REDIS_URL", default="redis://localhost:6379")]
+        },
+    }
+}
 
 DATABASES = {"default": env.db("DATABASE_URL")}
 
