@@ -1,0 +1,18 @@
+.PhoneInputCountry {
+  align-self: center;
+}
+
+.PhoneInputCountryIcon svg {
+  display: block;
+}
+
+.PhoneInputInput {
+  border: none;
+  outline: none;
+  background: transparent;
+}
+
+.PhoneInputInput:focus {
+  outline: none;
+  box-shadow: none;
+}

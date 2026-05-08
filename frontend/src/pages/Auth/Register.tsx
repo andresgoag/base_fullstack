@@ -2,6 +2,7 @@ import { useForm, Controller } from "react-hook-form";
 import { Link } from "react-router";
 import { useAuthContext } from "context/auth/AuthContext";
 import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
+import flags from "react-phone-number-input/flags";
 import "react-phone-number-input/style.css";
 
 type RegisterFormValues = {
@@ -94,7 +95,8 @@ export const RegisterForm: React.FC = () => {
                 defaultCountry="US"
                 value={value}
                 onChange={onChange}
-                className="form-control"
+                flags={flags}
+                className="form-control d-flex align-items-center"
                 id="phone"
               />
             )}

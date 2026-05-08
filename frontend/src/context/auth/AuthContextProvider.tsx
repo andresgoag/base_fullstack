@@ -12,6 +12,9 @@ import {
   blacklistToken,
 } from "api/auth";
 
+const USER_QUERY_STALE_TIME_MS = 60_000;
+const TOKEN_REFRESH_BUFFER_MS = 30_000;
+
 type ContextProps = {
   children: React.ReactNode;
 };
@@ -100,7 +103,7 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
     queryKey: ["me", access],
     queryFn: () => getUser(access!),
     enabled: !!access,
-    staleTime: 60_000,
+    staleTime: USER_QUERY_STALE_TIME_MS,
   });
 
   useEffect(() => {
@@ -130,7 +133,7 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
   useEffect(() => {
     if (!access || !refresh) return;
     const exp = getTokenExp(access);
-    const delay = exp - Date.now() - 30_000;
+    const delay = exp - Date.now() - TOKEN_REFRESH_BUFFER_MS;
     if (delay <= 0) {
       refreshAccess(refresh);
       return;
