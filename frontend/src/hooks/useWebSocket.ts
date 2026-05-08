@@ -25,7 +25,7 @@ export const useWebSocket = (roomName: string) => {
 
     socket.onclose = () => setIsAuthenticated(false);
 
-    socket.onmessage = (event) => {
+    socket.onmessage = event => {
       let parsed: unknown;
       try {
         parsed = JSON.parse(event.data);
@@ -40,7 +40,7 @@ export const useWebSocket = (roomName: string) => {
         setIsAuthenticated(true);
         return;
       }
-      setMessages((prev) => [
+      setMessages(prev => [
         ...prev,
         { id: messageIdRef.current++, text: event.data },
       ]);
