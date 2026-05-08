@@ -2,14 +2,25 @@ import { useState, useRef, useEffect } from "react";
 import { MainNavbar } from "components/MainNavbar/MainNavbar";
 import { useWebSocket } from "hooks/useWebSocket";
 
+type Message = {
+  id: number;
+  text: string;
+};
+
 export const WebSocketDemo = () => {
-  const { messages, isConnected, sendMessage } = useWebSocket("global");
+  const { messages: rawMessages, isAuthenticated, sendMessage } = useWebSocket("global");
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messageIdCounter = useRef(0);
+
+  const messages: Message[] = rawMessages.map((text) => ({
+    id: messageIdCounter.current++,
+    text,
+  }));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [rawMessages]);
 
   const handleSend = () => {
     const trimmed = input.trim();
@@ -29,8 +40,8 @@ export const WebSocketDemo = () => {
         <h1>WebSocket Echo</h1>
         <p className="text-muted">
           Status:{" "}
-          <span className={isConnected ? "text-success" : "text-danger"}>
-            {isConnected ? "Connected" : "Disconnected"}
+          <span className={isAuthenticated ? "text-success" : "text-danger"}>
+            {isAuthenticated ? "Authenticated" : "Connecting..."}
           </span>
         </p>
         <div
@@ -40,9 +51,9 @@ export const WebSocketDemo = () => {
           {messages.length === 0 ? (
             <p className="text-muted">No messages yet.</p>
           ) : (
-            messages.map((msg, index) => (
-              <div key={index} className="mb-1">
-                {msg}
+            messages.map((msg) => (
+              <div key={msg.id} className="mb-1">
+                {msg.text}
               </div>
             ))
           )}
@@ -57,7 +68,11 @@ export const WebSocketDemo = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
           />
-          <button className="btn btn-primary" onClick={handleSend} disabled={!isConnected}>
+          <button
+            className="btn btn-primary"
+            onClick={handleSend}
+            disabled={!isAuthenticated}
+          >
             Send
           </button>
         </div>

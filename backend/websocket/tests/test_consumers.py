@@ -1,127 +1,130 @@
+import json
 import pytest
-from django.contrib.auth import get_user_model
 from channels.testing import WebsocketCommunicator
-from rest_framework_simplejwt.tokens import RefreshToken
-from websocket.routing import websocket_urlpatterns
-from channels.routing import URLRouter
-
-User = get_user_model()
-
-ROOM_NAME = "testroom"
+from backend.asgi import application
 
 
 @pytest.fixture
-def user(db):
-    return User.objects.create_user(
-        email="ws@example.com",
+def valid_token(db):
+    from django.contrib.auth import get_user_model
+    from rest_framework_simplejwt.tokens import AccessToken
+    User = get_user_model()
+    user = User.objects.create_user(
+        email="test@example.com",
         phone="+14155552671",
-        first_name="WS",
+        password="testpassword123",
+        first_name="Test",
         last_name="User",
-        password="Str0ngP@ssword!",
     )
+    token = AccessToken.for_user(user)
+    return str(token)
 
 
 @pytest.fixture
-def valid_token(user):
-    return str(RefreshToken.for_user(user).access_token)
-
-
-@pytest.fixture
-def communicator():
-    async def build(room_name=ROOM_NAME):
-        app = URLRouter(websocket_urlpatterns)
-        comm = WebsocketCommunicator(app, f"/ws/echo/{room_name}/")
-        return comm
-
-    return build
+def channel_layer_settings(settings):
+    settings.CHANNEL_LAYERS = {
+        "default": {
+            "BACKEND": "channels.layers.InMemoryChannelLayer"
+        }
+    }
 
 
 @pytest.mark.django_db(transaction=True)
-async def test_connect_accepts_socket(communicator):
-    comm = await communicator()
-    connected, _ = await comm.connect()
+@pytest.mark.asyncio
+async def test_connect_and_auth_ok(valid_token, channel_layer_settings):
+    communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
+    connected, _ = await communicator.connect()
     assert connected
-    await comm.disconnect()
+    await communicator.send_json_to({"type": "auth", "token": valid_token})
+    response = await communicator.receive_json_from()
+    assert response == {"type": "auth_ok"}
+    await communicator.disconnect()
 
 
 @pytest.mark.django_db(transaction=True)
-async def test_non_auth_type_closes_with_4001(communicator):
-    comm = await communicator()
-    await comm.connect()
-    await comm.send_json_to({"type": "chat", "token": "irrelevant"})
-    response = await comm.receive_output()
+@pytest.mark.asyncio
+async def test_invalid_token_closes_connection(channel_layer_settings):
+    communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
+    connected, _ = await communicator.connect()
+    assert connected
+    await communicator.send_json_to({"type": "auth", "token": "invalid.token.here"})
+    response = await communicator.receive_output()
     assert response["type"] == "websocket.close"
     assert response["code"] == 4001
 
 
 @pytest.mark.django_db(transaction=True)
-async def test_invalid_token_closes_with_4001(communicator):
-    comm = await communicator()
-    await comm.connect()
-    await comm.send_json_to({"type": "auth", "token": "invalid.token.here"})
-    response = await comm.receive_output()
+@pytest.mark.asyncio
+async def test_wrong_message_type_closes_connection(channel_layer_settings):
+    communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
+    connected, _ = await communicator.connect()
+    assert connected
+    await communicator.send_json_to({"type": "wrong", "token": "anything"})
+    response = await communicator.receive_output()
     assert response["type"] == "websocket.close"
     assert response["code"] == 4001
 
 
 @pytest.mark.django_db(transaction=True)
-async def test_malformed_json_closes_with_4001(communicator):
-    comm = await communicator()
-    await comm.connect()
-    await comm.send_to(text_data="not json at all")
-    response = await comm.receive_output()
+@pytest.mark.asyncio
+async def test_echo_broadcasts_to_all_subscribers(valid_token, channel_layer_settings):
+    communicator1 = WebsocketCommunicator(application, "/ws/echo/room1/")
+    communicator2 = WebsocketCommunicator(application, "/ws/echo/room1/")
+    await communicator1.connect()
+    await communicator2.connect()
+    await communicator1.send_json_to({"type": "auth", "token": valid_token})
+    await communicator1.receive_json_from()
+    await communicator2.send_json_to({"type": "auth", "token": valid_token})
+    await communicator2.receive_json_from()
+    await communicator1.send_to(text_data="hello")
+    response1 = await communicator1.receive_from()
+    response2 = await communicator2.receive_from()
+    assert response1 == "hello"
+    assert response2 == "hello"
+    await communicator1.disconnect()
+    await communicator2.disconnect()
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.asyncio
+async def test_room_isolation(valid_token, channel_layer_settings):
+    communicator_a = WebsocketCommunicator(application, "/ws/echo/room_a/")
+    communicator_b = WebsocketCommunicator(application, "/ws/echo/room_b/")
+    await communicator_a.connect()
+    await communicator_b.connect()
+    await communicator_a.send_json_to({"type": "auth", "token": valid_token})
+    await communicator_a.receive_json_from()
+    await communicator_b.send_json_to({"type": "auth", "token": valid_token})
+    await communicator_b.receive_json_from()
+    await communicator_a.send_to(text_data="room_a_message")
+    response_a = await communicator_a.receive_from()
+    assert response_a == "room_a_message"
+    assert await communicator_b.receive_nothing()
+    await communicator_a.disconnect()
+    await communicator_b.disconnect()
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.asyncio
+async def test_message_before_auth_closes_connection(channel_layer_settings):
+    communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
+    await communicator.connect()
+    await communicator.send_to(text_data="not auth message")
+    response = await communicator.receive_output()
     assert response["type"] == "websocket.close"
     assert response["code"] == 4001
+    await communicator.disconnect()
 
 
 @pytest.mark.django_db(transaction=True)
-async def test_missing_token_key_closes_with_4001(communicator):
-    comm = await communicator()
-    await comm.connect()
-    await comm.send_json_to({"type": "auth"})
-    response = await comm.receive_output()
+@pytest.mark.asyncio
+async def test_oversized_message_closes_connection(valid_token, channel_layer_settings):
+    communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
+    await communicator.connect()
+    await communicator.send_json_to({"type": "auth", "token": valid_token})
+    await communicator.receive_json_from()
+    await communicator.send_to(text_data="x" * 4097)
+    response = await communicator.receive_output()
     assert response["type"] == "websocket.close"
     assert response["code"] == 4001
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_valid_auth_does_not_close_connection(
-    communicator, valid_token, settings
-):
-    settings.CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer",
-        }
-    }
-    comm = await communicator()
-    await comm.connect()
-    await comm.send_json_to({"type": "auth", "token": valid_token})
-    assert await comm.receive_nothing(timeout=0.3)
-    await comm.disconnect()
-
-
-@pytest.mark.django_db(transaction=True)
-async def test_authenticated_message_is_echoed_to_room(
-    communicator, valid_token, settings
-):
-    settings.CHANNEL_LAYERS = {
-        "default": {
-            "BACKEND": "channels.layers.InMemoryChannelLayer",
-        }
-    }
-    sender = await communicator()
-    receiver = await communicator()
-    await sender.connect()
-    await receiver.connect()
-    await sender.send_json_to({"type": "auth", "token": valid_token})
-    await receiver.send_json_to({"type": "auth", "token": valid_token})
-    assert await sender.receive_nothing(timeout=0.3)
-    assert await receiver.receive_nothing(timeout=0.3)
-    message = "hello room"
-    await sender.send_to(text_data=message)
-    received_by_sender = await sender.receive_from()
-    received_by_receiver = await receiver.receive_from()
-    assert received_by_sender == message
-    assert received_by_receiver == message
-    await sender.disconnect()
-    await receiver.disconnect()
+    await communicator.disconnect()

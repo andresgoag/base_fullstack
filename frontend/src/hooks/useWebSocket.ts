@@ -6,7 +6,7 @@ export const useWebSocket = (roomName: string) => {
   const { access } = useAuthContext();
   const socketRef = useRef<WebSocket | null>(null);
   const [messages, setMessages] = useState<string[]>([]);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
     if (!access) return;
@@ -15,12 +15,25 @@ export const useWebSocket = (roomName: string) => {
 
     socket.onopen = () => {
       socket.send(JSON.stringify({ type: "auth", token: access }));
-      setIsConnected(true);
     };
-    socket.onclose = () => setIsConnected(false);
-    socket.onmessage = (event) => setMessages((prev) => [...prev, event.data]);
+    socket.onclose = () => setIsAuthenticated(false);
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "auth_ok") {
+          setIsAuthenticated(true);
+          return;
+        }
+      } catch {
+        // plain text message, fall through
+      }
+      setMessages((prev) => [...prev, event.data]);
+    };
 
-    return () => socket.close();
+    return () => {
+      socket.close();
+      socketRef.current = null;
+    };
   }, [access, roomName]);
 
   const sendMessage = useCallback((message: string) => {
@@ -29,5 +42,5 @@ export const useWebSocket = (roomName: string) => {
     }
   }, []);
 
-  return { messages, isConnected, sendMessage };
+  return { messages, isAuthenticated, sendMessage };
 };

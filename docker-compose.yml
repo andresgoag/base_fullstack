@@ -32,7 +32,7 @@ services:
         - type=gha
       cache_to:
         - type=gha,mode=max
-    command: ["python", "manage.py", "runserver", "0.0.0.0:8000"]
+    command: ["daphne", "-b", "0.0.0.0", "-p", "8000", "backend.asgi:application"]
     env_file: .env
     volumes:
       - ./backend:/app
