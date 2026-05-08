@@ -35,7 +35,11 @@ export const WebSocketDemo = () => {
         </p>
         <div
           className="border rounded p-3 mb-3"
-          style={{ height: "300px", overflowY: "auto", backgroundColor: "#f8f9fa" }}
+          style={{
+            height: "300px",
+            overflowY: "auto",
+            backgroundColor: "#f8f9fa",
+          }}
         >
           {messages.length === 0 ? (
             <p className="text-muted">No messages yet.</p>

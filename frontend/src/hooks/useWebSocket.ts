@@ -32,7 +32,11 @@ export const useWebSocket = (roomName: string) => {
       } catch {
         parsed = null;
       }
-      if (parsed !== null && typeof parsed === "object" && (parsed as Record<string, unknown>).type === "auth_ok") {
+      if (
+        parsed !== null &&
+        typeof parsed === "object" &&
+        (parsed as Record<string, unknown>).type === "auth_ok"
+      ) {
         setIsAuthenticated(true);
         return;
       }
@@ -43,7 +47,10 @@ export const useWebSocket = (roomName: string) => {
     };
 
     return () => {
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+      if (
+        socket.readyState === WebSocket.OPEN ||
+        socket.readyState === WebSocket.CONNECTING
+      ) {
         socket.close();
       }
       socketRef.current = null;
