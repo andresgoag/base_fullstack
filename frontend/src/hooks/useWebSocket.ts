@@ -2,10 +2,16 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useAuthContext } from "context/auth/AuthContext";
 import { WS_BASE_URL } from "config";
 
+export type WebSocketMessage = {
+  id: number;
+  text: string;
+};
+
 export const useWebSocket = (roomName: string) => {
   const { access } = useAuthContext();
   const socketRef = useRef<WebSocket | null>(null);
-  const [messages, setMessages] = useState<string[]>([]);
+  const messageIdRef = useRef(0);
+  const [messages, setMessages] = useState<WebSocketMessage[]>([]);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
@@ -16,22 +22,30 @@ export const useWebSocket = (roomName: string) => {
     socket.onopen = () => {
       socket.send(JSON.stringify({ type: "auth", token: access }));
     };
+
     socket.onclose = () => setIsAuthenticated(false);
+
     socket.onmessage = (event) => {
+      let parsed: unknown;
       try {
-        const data = JSON.parse(event.data);
-        if (data.type === "auth_ok") {
-          setIsAuthenticated(true);
-          return;
-        }
+        parsed = JSON.parse(event.data);
       } catch {
-        // plain text message, fall through
+        parsed = null;
       }
-      setMessages((prev) => [...prev, event.data]);
+      if (parsed !== null && typeof parsed === "object" && (parsed as Record<string, unknown>).type === "auth_ok") {
+        setIsAuthenticated(true);
+        return;
+      }
+      setMessages((prev) => [
+        ...prev,
+        { id: messageIdRef.current++, text: event.data },
+      ]);
     };
 
     return () => {
-      socket.close();
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        socket.close();
+      }
       socketRef.current = null;
     };
   }, [access, roomName]);

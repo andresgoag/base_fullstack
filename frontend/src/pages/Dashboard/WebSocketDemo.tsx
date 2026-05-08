@@ -2,25 +2,14 @@ import { useState, useRef, useEffect } from "react";
 import { MainNavbar } from "components/MainNavbar/MainNavbar";
 import { useWebSocket } from "hooks/useWebSocket";
 
-type Message = {
-  id: number;
-  text: string;
-};
-
 export const WebSocketDemo = () => {
-  const { messages: rawMessages, isAuthenticated, sendMessage } = useWebSocket("global");
+  const { messages, isAuthenticated, sendMessage } = useWebSocket("global");
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messageIdCounter = useRef(0);
-
-  const messages: Message[] = rawMessages.map((text) => ({
-    id: messageIdCounter.current++,
-    text,
-  }));
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [rawMessages]);
+  }, [messages]);
 
   const handleSend = () => {
     const trimmed = input.trim();

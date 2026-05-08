@@ -1,24 +1,23 @@
 import json
+import uuid
 import pytest
 from channels.testing import WebsocketCommunicator
 from backend.asgi import application
-
 
 @pytest.fixture
 def valid_token(db):
     from django.contrib.auth import get_user_model
     from rest_framework_simplejwt.tokens import AccessToken
     User = get_user_model()
+    unique_id = uuid.uuid4()
     user = User.objects.create_user(
-        email="test@example.com",
-        phone="+14155552671",
+        email=f"test-{unique_id}@example.com",
+        phone=f"+1415555{str(unique_id.int)[:4]}",
         password="testpassword123",
         first_name="Test",
         last_name="User",
     )
-    token = AccessToken.for_user(user)
-    return str(token)
-
+    return str(AccessToken.for_user(user))
 
 @pytest.fixture
 def channel_layer_settings(settings):
@@ -27,10 +26,9 @@ def channel_layer_settings(settings):
             "BACKEND": "channels.layers.InMemoryChannelLayer"
         }
     }
-
+    yield
 
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.asyncio
 async def test_connect_and_auth_ok(valid_token, channel_layer_settings):
     communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
     connected, _ = await communicator.connect()
@@ -40,9 +38,7 @@ async def test_connect_and_auth_ok(valid_token, channel_layer_settings):
     assert response == {"type": "auth_ok"}
     await communicator.disconnect()
 
-
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.asyncio
 async def test_invalid_token_closes_connection(channel_layer_settings):
     communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
     connected, _ = await communicator.connect()
@@ -51,10 +47,9 @@ async def test_invalid_token_closes_connection(channel_layer_settings):
     response = await communicator.receive_output()
     assert response["type"] == "websocket.close"
     assert response["code"] == 4001
-
+    await communicator.disconnect()
 
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.asyncio
 async def test_wrong_message_type_closes_connection(channel_layer_settings):
     communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
     connected, _ = await communicator.connect()
@@ -63,10 +58,9 @@ async def test_wrong_message_type_closes_connection(channel_layer_settings):
     response = await communicator.receive_output()
     assert response["type"] == "websocket.close"
     assert response["code"] == 4001
-
+    await communicator.disconnect()
 
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.asyncio
 async def test_echo_broadcasts_to_all_subscribers(valid_token, channel_layer_settings):
     communicator1 = WebsocketCommunicator(application, "/ws/echo/room1/")
     communicator2 = WebsocketCommunicator(application, "/ws/echo/room1/")
@@ -84,9 +78,7 @@ async def test_echo_broadcasts_to_all_subscribers(valid_token, channel_layer_set
     await communicator1.disconnect()
     await communicator2.disconnect()
 
-
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.asyncio
 async def test_room_isolation(valid_token, channel_layer_settings):
     communicator_a = WebsocketCommunicator(application, "/ws/echo/room_a/")
     communicator_b = WebsocketCommunicator(application, "/ws/echo/room_b/")
@@ -103,9 +95,7 @@ async def test_room_isolation(valid_token, channel_layer_settings):
     await communicator_a.disconnect()
     await communicator_b.disconnect()
 
-
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.asyncio
 async def test_message_before_auth_closes_connection(channel_layer_settings):
     communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
     await communicator.connect()
@@ -115,9 +105,7 @@ async def test_message_before_auth_closes_connection(channel_layer_settings):
     assert response["code"] == 4001
     await communicator.disconnect()
 
-
 @pytest.mark.django_db(transaction=True)
-@pytest.mark.asyncio
 async def test_oversized_message_closes_connection(valid_token, channel_layer_settings):
     communicator = WebsocketCommunicator(application, "/ws/echo/room1/")
     await communicator.connect()
@@ -126,5 +114,5 @@ async def test_oversized_message_closes_connection(valid_token, channel_layer_se
     await communicator.send_to(text_data="x" * 4097)
     response = await communicator.receive_output()
     assert response["type"] == "websocket.close"
-    assert response["code"] == 4001
+    assert response["code"] == 4002
     await communicator.disconnect()

@@ -36,7 +36,7 @@ class EchoConsumer(AsyncWebsocketConsumer):
             return
         if len(text_data) > 4096:
             self.closing = True
-            await self.close(code=4001)
+            await self.close(code=4002)
             return
         await self.channel_layer.group_send(
             self.group_name,
