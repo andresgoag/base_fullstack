@@ -4,7 +4,7 @@ import { AuthLayout } from "./pages/Auth/Layout";
 import { LoginForm } from "./pages/Auth/Login";
 import { ProtectedRoute } from "./components/ProtectedRoute/ProtectedRoute";
 import { Dashboard } from "pages/Dashboard/Dashboard";
-import { AuthContextProvider } from "context/auth/AuthContextProvider.tsx";
+import { AuthContextProvider } from "context/auth/AuthContextProvider";
 import { RegisterForm } from "pages/Auth/Register";
 
 const Router = () => {

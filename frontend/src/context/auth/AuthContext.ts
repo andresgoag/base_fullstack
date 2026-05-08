@@ -2,7 +2,6 @@ import type { User } from "models";
 import { createContext, useContext } from "react";
 
 export type LoginData = {
-  username: string;
   email: string;
   password: string;
 };
@@ -10,8 +9,8 @@ export type LoginData = {
 export type RegisterData = {
   first_name: string;
   last_name: string;
-  username: string;
   email: string;
+  phone: string;
   password: string;
   re_password: string;
 };
@@ -25,10 +24,12 @@ interface AuthContextObject {
   errorLogin: Error | null;
   logout: () => void;
   currentUser: User | null;
+  isLoadingUser: boolean;
   register: (data: RegisterData) => void;
   isPendingRegister: boolean;
   isErrorRegister: boolean;
   errorRegister: Error | null;
+  isInitializing: boolean;
 }
 
 export const AuthContext = createContext<AuthContextObject>({
@@ -40,10 +41,12 @@ export const AuthContext = createContext<AuthContextObject>({
   errorLogin: null,
   logout: () => {},
   currentUser: null,
+  isLoadingUser: false,
   register: () => {},
   isPendingRegister: false,
   isErrorRegister: false,
   errorRegister: null,
+  isInitializing: true,
 });
 
 export const useAuthContext = () => {

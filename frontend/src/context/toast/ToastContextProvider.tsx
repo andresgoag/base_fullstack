@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { ToastContext } from "./ToastContext";
 import type { ShowToastData } from "./ToastContext";
 import type { ToastMessageData } from "models";
@@ -8,13 +8,9 @@ type ContextProps = {
   children: React.ReactNode;
 };
 
-const getNextToastId = (() => {
-  let id = 1;
-  return () => id++;
-})();
-
 export const ToastContextProvider = ({ children }: ContextProps) => {
   const [toasts, setToasts] = useState<ToastMessageData[]>([]);
+  const nextId = useRef(1);
 
   const removeToast = useCallback((toast: ToastMessageData) => {
     setToasts((prev) => prev.filter((t) => t.id !== toast.id));
@@ -22,7 +18,7 @@ export const ToastContextProvider = ({ children }: ContextProps) => {
 
   const showToast = useCallback(
     (toastData: ShowToastData) => {
-      const toast = { ...toastData, id: getNextToastId() };
+      const toast = { ...toastData, id: nextId.current++ };
       setToasts((prev) => [...prev, toast]);
       setTimeout(() => {
         removeToast(toast);

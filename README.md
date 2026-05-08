@@ -66,4 +66,8 @@ bun run lint
 uv add requests
 ```
 
-change the secret key in the settings to an environment variable when used in prod
+## Security
+
+This template stores the JWT refresh token in `localStorage` for simplicity. Any JavaScript running on the page (including a compromised dependency or a reflected XSS bug) can read it. A `Content-Security-Policy` header is set via a `<meta>` tag in `index.html` to restrict script sources and reduce the attack surface.
+
+**For production deployments** consider moving the refresh token to an `HttpOnly; Secure; SameSite=Lax` cookie set by the backend. This makes the token inaccessible to JavaScript and eliminates the XSS exfiltration risk at the cost of requiring CSRF protection on the refresh endpoint.
