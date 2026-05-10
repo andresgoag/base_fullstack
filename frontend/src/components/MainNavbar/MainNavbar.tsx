@@ -15,7 +15,7 @@ export const MainNavbar = () => {
           <Nav className="me-auto">
             <Nav.Link href="#features">Features</Nav.Link>
             <Nav.Link href="#pricing">Pricing</Nav.Link>
-            <Nav.Link href="/dashboard/websocket">WebSocket</Nav.Link>
+            <Nav.Link href="/websocket">WebSocket</Nav.Link>
             <NavDropdown title="Dropdown" id="collapsible-nav-dropdown">
               <NavDropdown.Item href="#action/3.1">Action</NavDropdown.Item>
               <NavDropdown.Item href="#action/3.2">

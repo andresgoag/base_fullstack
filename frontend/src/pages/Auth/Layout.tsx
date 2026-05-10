@@ -15,7 +15,7 @@ export const AuthLayout: React.FC = () => {
   }
 
   if (access) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/" replace />;
   }
 
   return (

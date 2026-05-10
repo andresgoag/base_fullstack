@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes } from "react-router";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { Home } from "./pages/Home/Home";
 import { AuthLayout } from "./pages/Auth/Layout";
 import { LoginForm } from "./pages/Auth/Login";
@@ -21,9 +21,11 @@ const Router = () => {
           </Route>
 
           <Route path="/" element={<ProtectedRoute />}>
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="dashboard/websocket" element={<WebSocketDemo />} />
+            <Route index element={<Dashboard />} />
+            <Route path="websocket" element={<WebSocketDemo />} />
           </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthContextProvider>
     </BrowserRouter>

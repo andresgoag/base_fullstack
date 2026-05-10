@@ -77,7 +77,7 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
       localStorage.setItem("refresh", data.refresh);
       setAccess(data.access);
       setRefresh(data.refresh);
-      navigate("/dashboard");
+      navigate("/");
     },
     onError: (error: Error) => {
       showToast({ message: error.message, type: "danger" });
