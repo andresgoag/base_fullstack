@@ -25,6 +25,7 @@ INSTALLED_APPS = [
     "user",
     "channels",
     "websocket",
+    "comment",
 ]
 
 MIDDLEWARE = [
@@ -117,6 +118,9 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"]
 )
+
+EMBEDDING_MODEL_NAME = env("EMBEDDING_MODEL_NAME", default="all-MiniLM-L6-v2")
+EMBEDDING_DIMENSIONS = 384
 
 DJOSER = {
     "LOGIN_FIELD": "email",
