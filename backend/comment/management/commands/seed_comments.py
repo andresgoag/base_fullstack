@@ -1,5 +1,6 @@
 from django.core.management.base import BaseCommand
 from django.db import transaction
+from comment.embeddings import embed_text
 from comment.models import Comment
 
 SEED_COMMENTS = [
@@ -24,12 +25,16 @@ class Command(BaseCommand):
             help="Delete all comments before seeding.",
         )
 
-    @transaction.atomic
     def handle(self, *args, **options):
-        if options["reset"]:
+        embedded = [(text, embed_text(text)) for text in SEED_COMMENTS]
+        self._write(options["reset"], embedded)
+
+    @transaction.atomic
+    def _write(self, reset, embedded):
+        if reset:
             deleted, _ = Comment.objects.all().delete()
             self.stdout.write(f"Deleted {deleted} existing comment(s).")
-        for text in SEED_COMMENTS:
-            Comment.objects.create(text=text)
+        for text, embedding in embedded:
+            Comment.objects.create(text=text, embedding=embedding)
             self.stdout.write(f"Created comment: {text}")
         self.stdout.write(self.style.SUCCESS("Comment seed complete."))

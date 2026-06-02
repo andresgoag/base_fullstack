@@ -11,11 +11,6 @@ def make_vector(index):
 
 
 @pytest.fixture
-def api_client():
-    return APIClient()
-
-
-@pytest.fixture
 def seeded_comments(db):
     Comment.objects.create(text="axis zero", embedding=make_vector(0))
     Comment.objects.create(text="axis one", embedding=make_vector(1))
@@ -30,6 +25,12 @@ def test_cosine_distance_orders_in_database(seeded_comments):
     ).order_by("distance")
     sql = str(queryset.query).lower()
     assert "order by" in sql
+    limited_sql = str(
+        Comment.objects.annotate(
+            distance=CosineDistance("embedding", query)
+        ).order_by("distance")[:5].query
+    ).lower()
+    assert "limit" in limited_sql
     results = list(queryset)
     assert results[0].text == "axis one"
     assert results[0].distance < results[1].distance
