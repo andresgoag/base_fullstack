@@ -21,11 +21,8 @@ class SimilarCommentsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         query_embedding = embed_text(text)
-        comments = (
-            Comment.objects.annotate(
-                distance=CosineDistance("embedding", query_embedding)
-            )
-            .order_by("distance")[:DEFAULT_LIMIT]
-        )
+        comments = Comment.objects.annotate(
+            distance=CosineDistance("embedding", query_embedding)
+        ).order_by("distance")[:DEFAULT_LIMIT]
         serializer = SimilarCommentSerializer(comments, many=True)
         return Response(serializer.data)

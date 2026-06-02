@@ -25,12 +25,7 @@ def test_cosine_distance_orders_in_database(seeded_comments):
     ).order_by("distance")
     sql = str(queryset.query).lower()
     assert "order by" in sql
-    limited_sql = str(
-        Comment.objects.annotate(
-            distance=CosineDistance("embedding", query)
-        ).order_by("distance")[:5].query
-    ).lower()
-    assert "limit" in limited_sql
+    assert "limit" in str(queryset[:5].query).lower()
     results = list(queryset)
     assert results[0].text == "axis one"
     assert results[0].distance < results[1].distance
@@ -38,9 +33,7 @@ def test_cosine_distance_orders_in_database(seeded_comments):
 
 @pytest.mark.django_db
 def test_similar_endpoint_returns_ranked_comments(seeded_comments, monkeypatch):
-    monkeypatch.setattr(
-        "comment.api.views.embed_text", lambda text: make_vector(2)
-    )
+    monkeypatch.setattr("comment.api.views.embed_text", lambda text: make_vector(2))
     client = APIClient()
     response = client.get("/comments/similar/", {"text": "anything"})
     assert response.status_code == 200
