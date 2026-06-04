@@ -3,3 +3,4 @@ __pycache__
 .env
 .claude
 docker-compose.override.yml
+backend/staticfiles

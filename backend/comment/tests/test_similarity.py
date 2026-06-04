@@ -1,11 +1,12 @@
 import pytest
+from django.conf import settings
 from rest_framework.test import APIClient
 from comment.models import Comment
 from pgvector.django import CosineDistance
 
 
 def make_vector(index):
-    vector = [0.0] * 384
+    vector = [0.0] * settings.EMBEDDING_DIMENSIONS
     vector[index] = 1.0
     return vector
 

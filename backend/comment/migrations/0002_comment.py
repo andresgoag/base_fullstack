@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
                 ("text", models.TextField()),
-                ("embedding", pgvector.django.VectorField(dimensions=384)),
+                ("embedding", pgvector.django.VectorField(dimensions=1536)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
             options={

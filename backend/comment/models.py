@@ -5,7 +5,7 @@ from comment.embeddings import embed_text
 
 class Comment(models.Model):
     text = models.TextField()
-    embedding = VectorField(dimensions=384)
+    embedding = VectorField(dimensions=1536)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

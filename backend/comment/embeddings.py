@@ -1,21 +1,18 @@
-import threading
 from django.conf import settings
+from openai import OpenAI
 
-_model = None
-_lock = threading.Lock()
+_client = None
 
 
-def get_model():
-    global _model
-    if _model is None:
-        with _lock:
-            if _model is None:
-                from sentence_transformers import SentenceTransformer
-
-                _model = SentenceTransformer(settings.EMBEDDING_MODEL_NAME)
-    return _model
+def get_client():
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=settings.OPENAI_API_KEY)
+    return _client
 
 
 def embed_text(text):
-    vector = get_model().encode(text, normalize_embeddings=True)
-    return vector.tolist()
+    response = get_client().embeddings.create(
+        model=settings.EMBEDDING_MODEL_NAME, input=text
+    )
+    return response.data[0].embedding
