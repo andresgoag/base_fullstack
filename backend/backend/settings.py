@@ -25,10 +25,12 @@ INSTALLED_APPS = [
     "user",
     "channels",
     "websocket",
+    "comment",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -90,6 +92,11 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 PHONENUMBER_DEFAULT_REGION = env("PHONENUMBER_DEFAULT_REGION", default="US")
@@ -117,6 +124,10 @@ SIMPLE_JWT = {
 CORS_ALLOWED_ORIGINS = env.list(
     "CORS_ALLOWED_ORIGINS", default=["http://localhost:5173"]
 )
+
+OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
+EMBEDDING_MODEL_NAME = env("EMBEDDING_MODEL_NAME", default="text-embedding-3-small")
+EMBEDDING_DIMENSIONS = 1536
 
 DJOSER = {
     "LOGIN_FIELD": "email",
