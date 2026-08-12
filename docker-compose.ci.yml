@@ -1,0 +1,16 @@
+# CI overlay for the test jobs.
+#
+# The `build` job is the single writer of the GitHub Actions layer cache. The
+# test jobs layer this file on top so they read from that cache but do not
+# write to it — three concurrent `mode=max` writers would upload the same
+# layers three times and thrash the cache for no benefit.
+#
+# Usage: docker compose -f docker-compose.yml -f docker-compose.ci.yml run ...
+services:
+  backend:
+    build:
+      cache_to: !reset []
+
+  frontend:
+    build:
+      cache_to: !reset []

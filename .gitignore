@@ -4,3 +4,7 @@ __pycache__
 .claude
 docker-compose.override.yml
 backend/staticfiles
+.coverage
+coverage.xml
+htmlcov/
+.DS_Store

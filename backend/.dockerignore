@@ -1,1 +1,10 @@
 .venv
+__pycache__
+*.py[cod]
+.pytest_cache
+staticfiles
+.env
+.env.*
+!.env.sample
+*.log
+.DS_Store

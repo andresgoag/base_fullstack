@@ -1,0 +1,11 @@
+# Code owners are requested for review automatically and, combined with a
+# branch protection rule requiring their approval, cannot be bypassed.
+#
+# Uncomment and replace the placeholders with real GitHub handles or teams.
+# Later matches win, so put the most specific paths last.
+#
+# *                      @your-org/maintainers
+# /backend/              @your-org/backend
+# /frontend/             @your-org/frontend
+# /.github/              @your-org/maintainers
+# /docker-compose.yml    @your-org/maintainers

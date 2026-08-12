@@ -1,3 +1,6 @@
+# Development stack only. It publishes ports, uses a hardcoded database
+# password, and bind-mounts source for hot reload. Do not deploy this file —
+# see the "Security notes" section of the README before running anywhere real.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -13,12 +16,12 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
 
   valkey:
     image: valkey/valkey:8-alpine
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     healthcheck:
       test: ["CMD", "valkey-cli", "ping"]
       interval: 1s
@@ -44,6 +47,18 @@ services:
       - backend_uv_venv:/app/.venv
     ports:
       - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import socket; socket.create_connection(('127.0.0.1', 8000), timeout=3).close()",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     depends_on:
       postgres:
         condition: service_healthy
