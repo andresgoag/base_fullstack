@@ -322,6 +322,18 @@ This template stores the JWT refresh token in `localStorage` for simplicity — 
 
 Both containers run as non-root users (`app` in the backend, `bun` in the frontend, `nginx` in the production frontend image), Postgres and Valkey are bound to `127.0.0.1` so they are not reachable from the network, and `DJANGO_ALLOWED_HOSTS` doubles as the WebSocket origin allowlist — remember to include every browser-facing origin when you deploy.
 
+> **On a Linux host, the source bind mount keeps host ownership.** The containers run as non-root (`app`, `bun`), so if your host UID differs from theirs they cannot write into `/app` — `collectstatic` fails on `staticfiles`, and `vite build` fails to create `dist`. Docker Desktop on macOS remaps ownership and hides this. If you hit it, add a gitignored `docker-compose.override.yml` pinning the container to your own UID:
+>
+> ```yaml
+> services:
+>   backend:
+>     user: "${UID}:${GID}"
+>   frontend:
+>     user: "${UID}:${GID}"
+> ```
+>
+> CI sidesteps this entirely — `docker-compose.ci.yml` drops the bind mounts so the test jobs run against the code baked into the image, which is what gets deployed anyway.
+
 > **Dependency volumes shadow the image.** `frontend_node_modules` and `backend_uv_venv` are named volumes mounted over `/app/node_modules` and `/app/.venv`. Docker only seeds a named volume from the image the first time it is created, so **rebuilding an image does not update an existing volume** — a new dependency, or a change to file ownership, will not appear until the volume is recreated. Symptoms are `EACCES` on those paths or a package that is installed in the image but missing at runtime. The fix:
 >
 > ```bash
