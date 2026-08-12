@@ -20,16 +20,22 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - uses: crazy-max/ghaction-github-runtime@v3
-      # This job is the single writer of the GitHub Actions layer cache. The
-      # test jobs read from it via docker-compose.ci.yml, which resets cache_to.
       - name: Build all services
         run: docker compose build
+      # The dev images are what the test jobs run. Build the production images
+      # too so they cannot rot unnoticed — this is also what exercises
+      # `vite build`, since the test jobs only typecheck.
+      - name: Build production images
+        run: |
+          docker build -f backend/Dockerfile -t backend-prod backend
+          docker build -f frontend/Dockerfile \
+            --build-arg VITE_API_BASE_URL=http://localhost:8000 \
+            --build-arg VITE_WEBSOCKET_URL=ws://localhost:8000 \
+            -t frontend-prod frontend
 
   test-backend:
     runs-on: ubuntu-24.04
     needs: build
-    env:
-      COMPOSE_FILE: docker-compose.yml:docker-compose.ci.yml
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -59,8 +65,6 @@ jobs:
   test-frontend:
     runs-on: ubuntu-24.04
     needs: build
-    env:
-      COMPOSE_FILE: docker-compose.yml:docker-compose.ci.yml
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
@@ -69,9 +73,9 @@ jobs:
         run: docker compose run --no-deps --rm frontend bun run lint
       - name: Check prettier formatting
         run: docker compose run --no-deps --rm frontend bun run format:check
-      # `build` runs `tsc -b` then `vite build`. eslint is not type-aware, so
-      # this is the only step that catches type errors or a broken bundle.
-      - name: Typecheck and build
-        run: docker compose run --no-deps --rm frontend bun run build
+      # eslint is not type-aware, so this is the only step that catches type
+      # errors. The bundle itself is built by the production image in `build`.
+      - name: Typecheck
+        run: docker compose run --no-deps --rm frontend bunx tsc -b
       - name: Run vitest
         run: docker compose run --rm frontend bun run test

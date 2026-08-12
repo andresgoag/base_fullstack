@@ -1,8 +1,11 @@
+# Development image, used by docker-compose.yml.
+#
+# Runs as root on purpose — see the comment in backend/Dockerfile.dev. The
+# production image (Dockerfile) serves the built assets from unprivileged
+# nginx and has no bind mount.
 FROM oven/bun:1
 WORKDIR /app
-RUN chown bun:bun /app
-USER bun
-COPY --chown=bun:bun bun.lock package.json ./
+COPY bun.lock package.json ./
 RUN bun install --frozen-lockfile
-COPY --chown=bun:bun . .
+COPY . .
 ENV HOST=0.0.0.0
