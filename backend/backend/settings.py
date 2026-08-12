@@ -65,7 +65,9 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env("CHANNEL_LAYERS_VALKEY_URL", default="redis://localhost:6379")]
+            "hosts": [
+                env("CHANNEL_LAYERS_VALKEY_URL", default="redis://localhost:6379")
+            ]
         },
     }
 }
@@ -127,7 +129,6 @@ CORS_ALLOWED_ORIGINS = env.list(
 
 OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 EMBEDDING_MODEL_NAME = env("EMBEDDING_MODEL_NAME", default="text-embedding-3-small")
-EMBEDDING_DIMENSIONS = 1536
 
 DJOSER = {
     "LOGIN_FIELD": "email",

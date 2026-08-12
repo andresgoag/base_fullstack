@@ -1,18 +1,22 @@
-from django.conf import settings
+from dataclasses import dataclass
+from typing import Protocol
 from openai import OpenAI
 
-_client = None
+
+class EmbeddingClient(Protocol):
+    dimensions: int
+
+    def embed(self, text: str) -> list[float]: ...
 
 
-def get_client():
-    global _client
-    if _client is None:
-        _client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    return _client
+@dataclass(frozen=True)
+class OpenAIEmbeddingClient:
+    client: OpenAI
+    model_name: str
+    dimensions: int
 
-
-def embed_text(text):
-    response = get_client().embeddings.create(
-        model=settings.EMBEDDING_MODEL_NAME, input=text
-    )
-    return response.data[0].embedding
+    def embed(self, text):
+        response = self.client.embeddings.create(
+            model=self.model_name, input=text, dimensions=self.dimensions
+        )
+        return response.data[0].embedding

@@ -1,7 +1,8 @@
+from dataclasses import dataclass
 from django.core.management.base import BaseCommand
 from django.db import transaction
-from comment.embeddings import embed_text
-from comment.models import Comment
+from comment.clients import get_embedding_client
+from comment.models import Comment, hash_embedding_source
 
 SEED_COMMENTS = [
     "The weather today is sunny and warm.",
@@ -15,8 +16,14 @@ SEED_COMMENTS = [
 ]
 
 
+@dataclass(frozen=True)
+class EmbeddedComment:
+    text: str
+    embedding: list[float]
+
+
 class Command(BaseCommand):
-    help = "Seed the database with example comments and local embeddings."
+    help = "Seed the database with example comments and their embeddings."
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -26,15 +33,29 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        embedded = [(text, embed_text(text)) for text in SEED_COMMENTS]
-        self._write(options["reset"], embedded)
-
-    @transaction.atomic
-    def _write(self, reset, embedded):
-        if reset:
-            deleted, _ = Comment.objects.all().delete()
-            self.stdout.write(f"Deleted {deleted} existing comment(s).")
-        for text, embedding in embedded:
-            Comment.objects.create(text=text, embedding=embedding)
-            self.stdout.write(f"Created comment: {text}")
+        embedded_comments = self._embed_seed_comments()
+        with transaction.atomic():
+            if options["reset"]:
+                self._delete_all_comments()
+            self._create_comments(embedded_comments)
         self.stdout.write(self.style.SUCCESS("Comment seed complete."))
+
+    def _embed_seed_comments(self):
+        embedding_client = get_embedding_client()
+        return [
+            EmbeddedComment(text=text, embedding=embedding_client.embed(text))
+            for text in SEED_COMMENTS
+        ]
+
+    def _delete_all_comments(self):
+        deleted, _ = Comment.objects.all().delete()
+        self.stdout.write(f"Deleted {deleted} existing comment(s).")
+
+    def _create_comments(self, embedded_comments):
+        for embedded_comment in embedded_comments:
+            Comment.objects.create(
+                text=embedded_comment.text,
+                embedding=embedded_comment.embedding,
+                embedding_source_hash=hash_embedding_source(embedded_comment.text),
+            )
+            self.stdout.write(f"Created comment: {embedded_comment.text}")
