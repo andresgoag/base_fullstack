@@ -1,20 +1,15 @@
-import { useAuthContext } from "context/auth/AuthContext";
 import { Outlet, Navigate } from "react-router";
+import { useAuthContext } from "@/context/auth/AuthContext";
+import { FullPageSpinner } from "@/components/FullPageSpinner/FullPageSpinner";
 
 export const AuthLayout: React.FC = () => {
-  const { access, isInitializing } = useAuthContext();
+  const { session, isInitializing } = useAuthContext();
 
   if (isInitializing) {
-    return (
-      <div className="d-flex justify-content-center align-items-center min-vh-100">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
+    return <FullPageSpinner />;
   }
 
-  if (access) {
+  if (session) {
     return <Navigate to="/" replace />;
   }
 

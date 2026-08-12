@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
 import { ToastContext } from "./ToastContext";
-import type { ShowToastData } from "./ToastContext";
-import type { ToastMessageData } from "models";
-import { ToastMessage } from "components/ToastMessage/ToastMessage";
+import type { ShowToastData, ToastMessageData } from "./ToastContext";
+import { ToastMessage } from "@/components/ToastMessage/ToastMessage";
+
+const DEFAULT_TOAST_DURATION_MS = 4000;
 
 type ContextProps = {
   children: React.ReactNode;
@@ -13,22 +14,26 @@ export const ToastContextProvider = ({ children }: ContextProps) => {
   const nextId = useRef(1);
 
   const removeToast = useCallback((toast: ToastMessageData) => {
-    setToasts((prev) => prev.filter((t) => t.id !== toast.id));
+    setToasts((previous) =>
+      previous.filter((candidate) => candidate.id !== toast.id),
+    );
   }, []);
 
   const showToast = useCallback(
     (toastData: ShowToastData) => {
       const toast = { ...toastData, id: nextId.current++ };
-      setToasts((prev) => [...prev, toast]);
+      setToasts((previous) => [...previous, toast]);
       setTimeout(() => {
         removeToast(toast);
-      }, toast.duration || 4000);
+      }, toast.duration ?? DEFAULT_TOAST_DURATION_MS);
     },
     [removeToast],
   );
 
+  const value = useMemo(() => ({ showToast }), [showToast]);
+
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <ToastContext.Provider value={value}>
       {children}
       <div className="toast-container position-fixed bottom-0 end-0 p-3">
         {toasts.map((toast) => (

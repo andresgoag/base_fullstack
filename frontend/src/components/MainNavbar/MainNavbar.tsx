@@ -1,36 +1,34 @@
-import { useAuthContext } from "context/auth/AuthContext";
+import { Link, NavLink } from "react-router";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
-import NavDropdown from "react-bootstrap/NavDropdown";
+import { useAuthContext } from "@/context/auth/AuthContext";
 
 export const MainNavbar = () => {
-  const { logout } = useAuthContext();
+  const { logout, currentUser } = useAuthContext();
   return (
     <Navbar collapseOnSelect expand="lg" bg="dark" variant="dark">
       <Container>
-        <Navbar.Brand href="/">My App</Navbar.Brand>
+        <Navbar.Brand as={Link} to="/">
+          My App
+        </Navbar.Brand>
         <Navbar.Toggle aria-controls="responsive-navbar-nav" />
         <Navbar.Collapse id="responsive-navbar-nav">
           <Nav className="me-auto">
-            <Nav.Link href="#features">Features</Nav.Link>
-            <Nav.Link href="#pricing">Pricing</Nav.Link>
-            <Nav.Link href="/websocket">WebSocket</Nav.Link>
-            <NavDropdown title="Dropdown" id="collapsible-nav-dropdown">
-              <NavDropdown.Item href="#action/3.1">Action</NavDropdown.Item>
-              <NavDropdown.Item href="#action/3.2">
-                Another action
-              </NavDropdown.Item>
-              <NavDropdown.Item href="#action/3.3">Something</NavDropdown.Item>
-              <NavDropdown.Divider />
-              <NavDropdown.Item href="#action/3.4">
-                Separated link
-              </NavDropdown.Item>
-            </NavDropdown>
+            <Nav.Link as={NavLink} to="/" end>
+              Dashboard
+            </Nav.Link>
+            <Nav.Link as={NavLink} to="/websocket">
+              WebSocket
+            </Nav.Link>
           </Nav>
           <Nav>
-            <Nav.Link href="#deets">More deets</Nav.Link>
-            <Nav.Link onClick={logout}>Logout</Nav.Link>
+            {currentUser && (
+              <Navbar.Text className="me-3">{currentUser.email}</Navbar.Text>
+            )}
+            <Nav.Link as="button" onClick={logout}>
+              Logout
+            </Nav.Link>
           </Nav>
         </Navbar.Collapse>
       </Container>

@@ -1,7 +1,8 @@
 import { useForm } from "react-hook-form";
 import { Link } from "react-router";
-import { useAuthContext } from "context/auth/AuthContext";
-import type { LoginData } from "context/auth/AuthContext";
+import { useAuthContext } from "@/context/auth/AuthContext";
+import { FieldError } from "@/components/FieldError/FieldError";
+import type { LoginData } from "@/auth/types";
 
 export const LoginForm: React.FC = () => {
   const {
@@ -10,10 +11,10 @@ export const LoginForm: React.FC = () => {
     formState: { errors },
   } = useForm<LoginData>();
 
-  const { login, isPendingLogin } = useAuthContext();
+  const { login } = useAuthContext();
 
   const onSubmit = (data: LoginData) => {
-    login(data);
+    login.mutate(data);
   };
 
   return (
@@ -28,6 +29,8 @@ export const LoginForm: React.FC = () => {
             type="email"
             className="form-control"
             id="email"
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? "email-error" : undefined}
             {...register("email", {
               required: "Email is required.",
               pattern: {
@@ -36,7 +39,7 @@ export const LoginForm: React.FC = () => {
               },
             })}
           />
-          <p className="text-danger">{errors.email?.message}</p>
+          <FieldError id="email-error" message={errors.email?.message} />
         </div>
         <div className="mb-3">
           <label htmlFor="password" className="form-label">
@@ -46,19 +49,21 @@ export const LoginForm: React.FC = () => {
             type="password"
             className="form-control"
             id="password"
+            aria-invalid={!!errors.password}
+            aria-describedby={errors.password ? "password-error" : undefined}
             {...register("password", {
               required: "Password is required.",
             })}
           />
-          <p className="text-danger">{errors.password?.message}</p>
+          <FieldError id="password-error" message={errors.password?.message} />
         </div>
         <div className="d-flex justify-content-center">
           <button
             type="submit"
             className="btn btn-primary w-100"
-            disabled={isPendingLogin}
+            disabled={login.isPending}
           >
-            {isPendingLogin ? (
+            {login.isPending ? (
               <div className="spinner-border text-light" role="status">
                 <span className="visually-hidden">Loading...</span>
               </div>

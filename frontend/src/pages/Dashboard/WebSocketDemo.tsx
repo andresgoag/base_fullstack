@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { MainNavbar } from "components/MainNavbar/MainNavbar";
-import { useWebSocket } from "hooks/useWebSocket";
+import { MainNavbar } from "@/components/MainNavbar/MainNavbar";
+import { useWebSocket } from "@/hooks/useWebSocket";
 
 export const WebSocketDemo = () => {
   const { messages, isAuthenticated, sendMessage } = useWebSocket("global");

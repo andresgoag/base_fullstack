@@ -1,5 +1,5 @@
 import { Toast } from "react-bootstrap";
-import type { ToastMessageData } from "models";
+import type { ToastMessageData } from "@/context/toast/ToastContext";
 
 type ToastMessageProps = {
   toast: ToastMessageData;
