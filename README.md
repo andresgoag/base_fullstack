@@ -193,8 +193,7 @@ The frontend wraps all of this in `useWebSocket` (`frontend/src/hooks/useWebSock
 ├── docker-compose.yml          # postgres · valkey · backend · frontend (DEV ONLY)
 ├── .env.sample                 # root env template (backend config)
 ├── backend/
-│   ├── Dockerfile.dev          # dev image used by compose (root, bind-mounted)
-│   ├── Dockerfile              # production image, runs as a non-root user
+│   ├── Dockerfile              # uv-based dev image used by compose
 │   ├── pyproject.toml          # deps managed by uv
 │   ├── manage.py
 │   ├── backend/                # project: settings, urls, asgi (HTTP+WS router)
@@ -206,9 +205,7 @@ The frontend wraps all of this in `useWebSocket` (`frontend/src/hooks/useWebSock
 │       ├── clients.py          # composition root: builds the adapter from settings
 │       └── services.py         # create / re-embed / search — takes a client
 └── frontend/
-    ├── Dockerfile.dev          # dev image used by compose (root, bind-mounted)
-    ├── Dockerfile              # production: bun build → unprivileged nginx
-    ├── nginx.conf              # SPA history fallback + asset caching
+    ├── Dockerfile.dev          # bun dev image used by compose
     ├── package.json            # deps managed by bun
     └── src/
         ├── Router.tsx          # lazy-loaded routes + AuthContextProvider
@@ -288,11 +285,11 @@ docker compose exec frontend bun add <package>      # add a dependency
 | --- | --- |
 | `build` | Builds every image. Sole writer of the GitHub Actions layer cache. |
 | `test-backend` | Missing migrations · `check --deploy` · Black · Flake8 · Pytest with coverage |
-| `test-frontend` | ESLint · Prettier · **`tsc -b`** · Vitest |
+| `test-frontend` | ESLint · Prettier · **`bun run build` (`tsc -b` + `vite build`)** · Vitest |
 
 Three things worth knowing about how this is wired:
 
-- **`tsc -b` is the only step that typechecks.** ESLint is configured without `parserOptions.project`, so it is purely syntactic — `const x: number = "string"` passes it. Without this step, type errors reach `main`. The bundle itself is verified by building the production image in the `build` job, which is a stronger check than running `vite build` in the dev container.
+- **`bun run build` is the only step that typechecks.** ESLint is configured without `parserOptions.project`, so it is purely syntactic — `const x: number = "string"` passes it. Without this step, type errors and a broken bundle reach `main`.
 - **The CI env file starts from `.env.sample`** (`cp .env.sample .env`, then append CI-specific overrides; later keys win). Hand-listing variables meant `CHANNEL_LAYERS_VALKEY_URL` silently went missing and the channel layer resolved to `localhost` in CI. Adding a variable to the sample now reaches CI automatically.
 - **CI uses the same `docker-compose.yml` you do.** There is no CI-specific compose file — a GitHub runner is just another machine running the same containers, and anything that only breaks in CI is a bug worth reproducing locally.
 
@@ -319,10 +316,11 @@ This template stores the JWT refresh token in `localStorage` for simplicity — 
 - Run `python manage.py check --deploy` and clear the warnings — `SECURE_HSTS_SECONDS`, `SECURE_SSL_REDIRECT`, `SESSION_COOKIE_SECURE`, and `CSRF_COOKIE_SECURE` are all unset, and behind a proxy you will also want `SECURE_PROXY_SSL_HEADER`.
 - Replace the hardcoded dev Postgres password in `docker-compose.yml`, set a strong `DJANGO_SECRET_KEY`, lock down `DJANGO_ALLOWED_HOSTS` / `CORS_ALLOWED_ORIGINS`, and set `DJANGO_DEBUG=False`.
 - Configure `LOGGING`. There is no logging config at all, so application errors go nowhere useful.
+- Run the containers as a non-root user. The single Dockerfile per service targets local development, where compose bind-mounts your source, so it runs as root — see [Deploying](#deploying) for why those two things conflict.
 
-The production images run as non-root (`app` in the backend, `nginx` in the frontend); the dev images run as root because they bind-mount your source — see [Dev images vs production images](#dev-images-vs-production-images). Postgres and Valkey are bound to `127.0.0.1` so they are not reachable from the network, and `DJANGO_ALLOWED_HOSTS` doubles as the WebSocket origin allowlist — remember to include every browser-facing origin when you deploy.
+Postgres and Valkey are bound to `127.0.0.1` so they are not reachable from the network, and `DJANGO_ALLOWED_HOSTS` doubles as the WebSocket origin allowlist — remember to include every browser-facing origin when you deploy.
 
-> **Dependency volumes shadow the image.** `frontend_node_modules` and `backend_uv_venv` are named volumes mounted over `/app/node_modules` and `/app/.venv`. Docker only seeds a named volume from the image the first time it is created, so **rebuilding an image does not update an existing volume** — a new dependency, or a change to file ownership, will not appear until the volume is recreated. Symptoms are `EACCES` on those paths or a package that is installed in the image but missing at runtime. The fix:
+> **Dependency volumes shadow the image.** `frontend_node_modules` and `backend_uv_venv` are named volumes mounted over `/app/node_modules` and `/app/.venv`. Docker only seeds a named volume from the image the first time it is created, so **rebuilding an image does not update an existing volume** — a newly added dependency will not appear until the volume is recreated. The symptom is a package that is installed in the image but missing at runtime. The fix:
 >
 > ```bash
 > docker compose down && docker volume rm base_fullstack_frontend_node_modules base_fullstack_backend_uv_venv && docker compose up --build --wait
@@ -330,33 +328,17 @@ The production images run as non-root (`app` in the backend, `nginx` in the fron
 
 ## Deploying
 
-`docker-compose.yml` is a **development** stack: it publishes ports, hardcodes the database password, and bind-mounts source for hot reload. Do not deploy it.
+`docker-compose.yml` is a **development** stack: it publishes ports, hardcodes the database password, bind-mounts source for hot reload, and its containers run as **root**. Do not deploy it.
 
-### Dev images vs production images
+There is deliberately **one Dockerfile per service**, and it is the one compose uses locally and in CI — so nothing about the images is hidden or diverges between the two.
 
-Each service has two Dockerfiles, and the split exists for one specific reason.
+That means there is no production packaging here yet. When you add it, the things to decide are:
 
-| | Used by | Runs as |
-| --- | --- | --- |
-| `Dockerfile.dev` | `docker-compose.yml` (local **and** CI) | `root` |
-| `Dockerfile` | your deploy pipeline | `app` / `nginx` |
+- **Run as a non-root user.** Note that this only works cleanly without a bind mount: a bind mount keeps the *host's* file ownership, so a non-root container user whose UID does not match the host's cannot write into it — `collectstatic`, `vite build`, and `pytest-cov` all fail. Docker Desktop on macOS remaps ownership and hides this, so it surfaces only on Linux and CI.
+- **Build the frontend to static assets** (`bun run build`) and serve `dist/` from a real web server with a history fallback, rather than shipping the Vite dev server. `VITE_*` values are inlined at build time, so an image is bound to the API origin it was built against — one image per environment.
+- **Everything in the [Security notes](#security-notes) checklist**, plus a managed Postgres and Valkey and a `LOGGING` config.
 
-A bind mount keeps the **host's** file ownership. If the container runs as a non-root user whose UID does not match the host's, it cannot write into the mounted directory — `collectstatic` fails on `staticfiles`, `vite build` fails to create `dist`, and `pytest-cov` fails to write `.coverage`. Docker Desktop on macOS remaps ownership and hides this completely, so it surfaces only on Linux and on CI runners.
-
-Rather than paper over that with host-specific configuration, the dev images run as root (they are bind-mounting your working tree anyway, where root gains nothing) and the production images — which ship without a bind mount — run non-root. The `build` CI job builds both production images on every run so they cannot rot unnoticed.
-
-The frontend has a production image — a multi-stage build that compiles with bun and serves the result from unprivileged nginx (82MB, runs as `nginx`, SPA history fallback, immutable asset caching, no-cache on `index.html`):
-
-```bash
-docker build -f frontend/Dockerfile \
-  --build-arg VITE_API_BASE_URL=https://api.example.com \
-  --build-arg VITE_WEBSOCKET_URL=wss://api.example.com \
-  -t myapp-frontend frontend
-```
-
-Vite inlines `VITE_*` at build time, so these are **build args, not runtime env** — an image is bound to the API origin it was built against. You need one image per environment.
-
-The backend image runs under Daphne and is deployment-ready as-is; what it still needs is a managed Postgres and Valkey, the settings in the [Security notes](#security-notes) checklist, and a `LOGGING` config. There is no production compose file or Kubernetes manifest here — that is deliberately left to you.
+The backend image runs under Daphne and is otherwise deployment-ready.
 
 ## Recommended next steps
 

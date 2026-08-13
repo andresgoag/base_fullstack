@@ -31,7 +31,6 @@ services:
   backend:
     build:
       context: backend
-      dockerfile: Dockerfile.dev
       cache_from:
         - type=gha
       cache_to:

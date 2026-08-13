@@ -5,13 +5,10 @@ ENV PYTHONUNBUFFERED=1
 COPY --from=ghcr.io/astral-sh/uv:0.9.8 /uv /uvx /bin/
 
 ENV APP_DIR=/app
-RUN groupadd --system app && useradd --system --gid app --create-home app
-RUN mkdir -p ${APP_DIR} && chown app:app ${APP_DIR}
-
-USER app
 WORKDIR ${APP_DIR}
-COPY --chown=app:app pyproject.toml uv.lock ${APP_DIR}
+
+COPY pyproject.toml uv.lock ${APP_DIR}
 RUN uv sync --locked
 ENV PATH="/app/.venv/bin:$PATH"
 
-COPY --chown=app:app . ${APP_DIR}
+COPY . ${APP_DIR}
