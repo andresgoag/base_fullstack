@@ -1,0 +1,14 @@
+{
+  "closeCodes": {
+    "unauthorized": 4001,
+    "messageTooLarge": 4002,
+    "tokenExpired": 4003,
+    "authTimeout": 4004,
+    "rateLimitExceeded": 4005
+  },
+  "errorCodes": {
+    "invalidMessage": "invalid_message",
+    "unsupportedType": "unsupported_type"
+  },
+  "maxMessageLength": 4096
+}

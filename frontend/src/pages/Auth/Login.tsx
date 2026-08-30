@@ -1,75 +1,86 @@
-import { useForm } from "react-hook-form";
+import { useMemo } from "react";
+import * as z from "zod";
 import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useAuthContext } from "context/auth/AuthContext";
-import type { LoginData } from "context/auth/AuthContext";
+import { TextField } from "components/FormField/TextField";
+import { SubmitButton } from "components/SubmitButton/SubmitButton";
+import {
+  getFieldNames,
+  useValidatedForm,
+  type FormSchema,
+} from "forms/useValidatedForm";
+import { useServerFieldErrors } from "forms/useServerFieldErrors";
+import { readServerFormErrors } from "forms/serverErrors";
+import { buildEmailField, buildRequiredPasswordField } from "validation";
+import type { LoginData } from "models";
+import { ROUTES } from "routes";
 
-export const LoginForm: React.FC = () => {
+const buildLoginSchema = (t: TFunction): FormSchema<LoginData> =>
+  z.object({
+    email: buildEmailField(t),
+    password: buildRequiredPasswordField(t("validation.passwordRequired")),
+  });
+
+export const LoginForm = () => {
+  const { t } = useTranslation();
+  const { login } = useAuthContext();
+  const schema = useMemo(() => buildLoginSchema(t), [t]);
+  const fields = useMemo(() => getFieldNames(schema), [schema]);
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors },
-  } = useForm<LoginData>();
+  } = useValidatedForm(schema, { disabled: login.isPending });
 
-  const { login, isPendingLogin } = useAuthContext();
-
-  const onSubmit = (data: LoginData) => {
-    login(data);
-  };
+  useServerFieldErrors(login.error, setError, fields);
+  const { formMessage } = readServerFormErrors(login.error, fields);
 
   return (
     <>
-      <h3 className="mb-4 text-center">Login</h3>
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="mb-3">
-          <label htmlFor="email" className="form-label">
-            Email address
-          </label>
-          <input
-            type="email"
-            className="form-control"
-            id="email"
-            {...register("email", {
-              required: "Email is required.",
-              pattern: {
-                value: /\S+@\S+\.\S+/,
-                message: "Entered value does not match email format",
-              },
-            })}
-          />
-          <p className="text-danger">{errors.email?.message}</p>
+      <h1 className="h3 mb-4 text-center">{t("auth.login.heading")}</h1>
+      {login.isError && formMessage !== null && (
+        <div className="alert alert-danger" role="alert">
+          {formMessage}
         </div>
-        <div className="mb-3">
-          <label htmlFor="password" className="form-label">
-            Password
-          </label>
-          <input
-            type="password"
-            className="form-control"
-            id="password"
-            {...register("password", {
-              required: "Password is required.",
-            })}
-          />
-          <p className="text-danger">{errors.password?.message}</p>
-        </div>
+      )}
+      <form
+        onSubmit={(event) =>
+          void handleSubmit((data) => {
+            login.submit(data);
+          })(event)
+        }
+        noValidate
+      >
+        <TextField
+          id="email"
+          label={t("fields.email")}
+          type="email"
+          autoComplete="email"
+          error={errors.email?.message}
+          registration={register("email")}
+        />
+        <TextField
+          id="password"
+          label={t("fields.password")}
+          type="password"
+          autoComplete="current-password"
+          error={errors.password?.message}
+          registration={register("password")}
+        />
         <div className="d-flex justify-content-center">
-          <button
-            type="submit"
-            className="btn btn-primary w-100"
-            disabled={isPendingLogin}
-          >
-            {isPendingLogin ? (
-              <div className="spinner-border text-light" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            ) : (
-              "Login"
-            )}
-          </button>
+          <SubmitButton
+            label={t("auth.login.submit")}
+            pendingLabel={t("auth.login.submitting")}
+            isPending={login.isPending}
+          />
         </div>
       </form>
-      <div className="d-flex justify-content-center p-3">
-        <Link to="/auth/register">Don't have an Account? Register here</Link>
+      <div className="d-flex flex-column align-items-center gap-2 p-3">
+        <Link to={ROUTES.forgotPassword}>{t("auth.login.forgotPassword")}</Link>
+        <Link to={ROUTES.register}>{t("auth.login.noAccount")}</Link>
       </div>
     </>
   );

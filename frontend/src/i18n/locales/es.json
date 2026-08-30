@@ -1,0 +1,209 @@
+{
+  "app": {
+    "name": "Proyecto fullstack"
+  },
+  "common": {
+    "skipToContent": "Saltar al contenido principal",
+    "loading": "Cargando...",
+    "backToLogin": "Volver a iniciar sesión",
+    "backToHome": "Volver al inicio",
+    "backToDashboard": "Volver al panel",
+    "close": "Cerrar",
+    "language": "Idioma",
+    "checkYourEmail": "Revisa tu correo",
+    "notifications": "Notificaciones"
+  },
+  "nav": {
+    "brand": "Mi aplicación",
+    "dashboard": "Panel",
+    "websocket": "WebSocket",
+    "comments": "Comentarios",
+    "account": "Cuenta",
+    "logout": "Cerrar sesión",
+    "loadingName": "Cargando..."
+  },
+  "titles": {
+    "home": "Inicio",
+    "login": "Iniciar sesión",
+    "register": "Crear cuenta",
+    "forgotPassword": "Olvidé mi contraseña",
+    "resetPassword": "Restablecer contraseña",
+    "activate": "Activar cuenta",
+    "resendActivation": "Reenviar activación",
+    "dashboard": "Panel",
+    "websocket": "WebSocket",
+    "comments": "Comentarios similares",
+    "account": "Cuenta",
+    "notFound": "Página no encontrada"
+  },
+  "home": {
+    "heading": "Bienvenido a la página de inicio",
+    "intro": "Esta es la página principal de nuestra aplicación.",
+    "login": "Iniciar sesión",
+    "register": "Crear cuenta"
+  },
+  "auth": {
+    "login": {
+      "heading": "Iniciar sesión",
+      "submit": "Iniciar sesión",
+      "submitting": "Entrando...",
+      "forgotPassword": "¿Olvidaste tu contraseña?",
+      "noAccount": "¿No tienes cuenta? Regístrate aquí"
+    },
+    "register": {
+      "heading": "Crear cuenta",
+      "submit": "Crear cuenta",
+      "submitting": "Creando la cuenta...",
+      "haveAccount": "¿Ya tienes cuenta? Inicia sesión aquí",
+      "resendActivation": "Reenviar correo de activación",
+      "activationSent": "Cuenta creada. Revisa tu correo para activarla."
+    },
+    "forgotPassword": {
+      "heading": "Olvidé mi contraseña",
+      "submit": "Enviar enlace",
+      "submitting": "Enviando...",
+      "sent": "Si existe una cuenta con esa dirección, enviamos un enlace para restablecer la contraseña."
+    },
+    "resendActivation": {
+      "heading": "Reenviar activación",
+      "submit": "Reenviar correo de activación",
+      "submitting": "Enviando...",
+      "sent": "Si esa cuenta todavía necesita activarse, enviamos un enlace nuevo."
+    },
+    "resetPassword": {
+      "heading": "Elige una contraseña nueva",
+      "submit": "Restablecer contraseña",
+      "submitting": "Guardando...",
+      "invalidLink": "Enlace no válido",
+      "requestNewLink": "Solicitar un enlace nuevo",
+      "done": "Tu contraseña fue restablecida."
+    },
+    "activate": {
+      "invalidLink": "Enlace de activación no válido",
+      "requestNewLink": "Solicitar un enlace nuevo",
+      "working": "Activando tu cuenta...",
+      "done": "Cuenta activada",
+      "doneDetail": "Tu cuenta está lista. Ya puedes iniciar sesión.",
+      "failed": "No se pudo activar la cuenta",
+      "goToLogin": "Ir a iniciar sesión"
+    }
+  },
+  "fields": {
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "currentPassword": "Contraseña actual",
+    "newPassword": "Contraseña nueva",
+    "confirmNewPassword": "Confirma la contraseña nueva",
+    "confirmPassword": "Confirma la contraseña",
+    "firstName": "Nombre",
+    "lastName": "Apellido",
+    "phone": "Teléfono"
+  },
+  "account": {
+    "heading": "Cuenta",
+    "profile": "Perfil",
+    "loadingProfile": "Cargando tu perfil...",
+    "save": "Guardar cambios",
+    "saving": "Guardando...",
+    "updated": "Perfil actualizado.",
+    "changePassword": "Cambiar contraseña",
+    "changePasswordSubmit": "Cambiar contraseña",
+    "passwordChanged": "Contraseña cambiada."
+  },
+  "dashboard": {
+    "greeting": "¡Hola {{name}}!",
+    "heading": "Panel",
+    "loadingGreeting": "Cargando tus datos"
+  },
+  "comments": {
+    "heading": "Comentarios similares",
+    "intro": "Cada tecla inicia una búsqueda y cancela la anterior. Los resultados vienen del endpoint de similitud de pgvector.",
+    "searchLabel": "Describe lo que estás buscando",
+    "searchPlaceholder": "la entrega llegó tarde",
+    "prompt": "Escribe algo para buscar.",
+    "searching": "Buscando comentarios...",
+    "empty": "Ningún comentario coincide con esa búsqueda.",
+    "similarity": "{{percentage}} % de similitud"
+  },
+  "websocket": {
+    "heading": "Eco por WebSocket",
+    "statusLabel": "Estado",
+    "status": {
+      "connecting": "Conectando...",
+      "authenticating": "Entrando a la sala...",
+      "ready": "Conectado",
+      "reconnecting": "Reconectando...",
+      "closed": "Desconectado"
+    },
+    "empty": "Todavía no hay mensajes.",
+    "messageLabel": "Mensaje",
+    "messagePlaceholder": "Escribe un mensaje...",
+    "send": "Enviar",
+    "closeReason": {
+      "unauthorized": "El servidor rechazó la sesión para esta sala.",
+      "messageTooLarge": "Ese mensaje era demasiado largo para enviarlo.",
+      "tokenExpired": "La sesión expiró mientras la sala estaba abierta.",
+      "authTimeout": "El servidor cerró la sala antes de que se pudiera entrar.",
+      "rateLimitExceeded": "Se enviaron demasiados mensajes, así que la sala se cerró.",
+      "unknown": "La conexión en tiempo real se interrumpió."
+    },
+    "failed": "La conexión en tiempo real falló.",
+    "signInRequired": "Necesitas iniciar sesión para entrar a esta sala."
+  },
+  "notFound": {
+    "code": "404",
+    "detail": "No encontramos la página que buscabas."
+  },
+  "routeError": {
+    "heading": "Algo salió mal",
+    "reload": "Recargar la aplicación",
+    "unexpected": "Un error inesperado impidió cargar esta página."
+  },
+  "session": {
+    "expired": "Tu sesión expiró, vuelve a iniciar sesión."
+  },
+  "validation": {
+    "emailRequired": "El correo electrónico es obligatorio.",
+    "emailInvalid": "Escribe un correo electrónico válido.",
+    "required": "{{field}} es obligatorio.",
+    "maxLength": "Usa como máximo {{count}} caracteres.",
+    "passwordRequired": "La contraseña es obligatoria.",
+    "currentPasswordRequired": "La contraseña actual es obligatoria.",
+    "confirmPasswordRequired": "Confirma la contraseña.",
+    "passwordsDoNotMatch": "Las contraseñas no coinciden.",
+    "passwordTooWeak": "Elige una contraseña más segura.",
+    "phoneRequired": "El teléfono es obligatorio.",
+    "phoneInvalid": "Escribe un número de teléfono internacional válido.",
+    "firstName": "El nombre",
+    "lastName": "El apellido"
+  },
+  "passwordStrength": {
+    "label": "Seguridad de la contraseña",
+    "weak": "Débil",
+    "fair": "Aceptable",
+    "good": "Buena",
+    "strong": "Fuerte",
+    "problem": {
+      "minimumLength": "Usa al menos {{count}} caracteres.",
+      "onlyNumbers": "No uses solo números.",
+      "tooCommon": "Esta contraseña es demasiado común.",
+      "personal": "No reutilices tu nombre ni tu correo."
+    }
+  },
+  "apiError": {
+    "network": "No pudimos contactar al servidor. Revisa tu conexión e inténtalo de nuevo.",
+    "validation": "Revisa los campos marcados.",
+    "authentication": "Tu sesión ya no es válida. Vuelve a iniciar sesión.",
+    "permission": "No tienes acceso a este recurso.",
+    "notFound": "No encontramos lo que buscabas.",
+    "server": "Algo salió mal de nuestro lado. Inténtalo de nuevo en un momento.",
+    "contract": "El servidor devolvió datos que esta aplicación no entiende.",
+    "unknown": "Ocurrió un error inesperado."
+  },
+  "toast": {
+    "success": "Listo",
+    "danger": "Error",
+    "warning": "Aviso",
+    "secondary": "Aviso"
+  }
+}

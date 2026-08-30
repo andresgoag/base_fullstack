@@ -1,14 +1,28 @@
 import { useState, useRef, useEffect } from "react";
-import { MainNavbar } from "components/MainNavbar/MainNavbar";
+import { useTranslation } from "react-i18next";
 import { useWebSocket } from "hooks/useWebSocket";
+import { prefersReducedMotion } from "a11y/motion";
+import type { ConnectionStatus } from "websocket/RoomConnection";
+
+const STATUS_STYLES: Record<ConnectionStatus, string> = {
+  connecting: "text-warning-emphasis",
+  authenticating: "text-warning-emphasis",
+  ready: "text-success-emphasis",
+  reconnecting: "text-warning-emphasis",
+  closed: "text-danger-emphasis",
+};
 
 export const WebSocketDemo = () => {
-  const { messages, isAuthenticated, sendMessage } = useWebSocket("global");
+  const { t, i18n } = useTranslation();
+  const { messages, status, failure, isReady, sendMessage } =
+    useWebSocket("global");
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: prefersReducedMotion() ? "auto" : "smooth",
+    });
   }, [messages]);
 
   const handleSend = () => {
@@ -18,58 +32,74 @@ export const WebSocketDemo = () => {
     setInput("");
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") handleSend();
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") handleSend();
   };
 
+  const formatTime = (isoTimestamp: string): string =>
+    new Intl.DateTimeFormat(i18n.language, { timeStyle: "medium" }).format(
+      new Date(isoTimestamp),
+    );
+
   return (
-    <>
-      <MainNavbar />
-      <div className="container mt-3">
-        <h1>WebSocket Echo</h1>
-        <p className="text-muted">
-          Status:{" "}
-          <span className={isAuthenticated ? "text-success" : "text-danger"}>
-            {isAuthenticated ? "Authenticated" : "Connecting..."}
-          </span>
-        </p>
+    <div className="container mt-3">
+      <h1>{t("websocket.heading")}</h1>
+      <p className="text-muted" role="status">
+        {t("websocket.statusLabel")}:{" "}
+        <span className={STATUS_STYLES[status]}>
+          {t(`websocket.status.${status}`)}
+        </span>
+      </p>
+      {failure && (
         <div
-          className="border rounded p-3 mb-3"
-          style={{
-            height: "300px",
-            overflowY: "auto",
-            backgroundColor: "#f8f9fa",
-          }}
+          className={`alert ${failure.isRecoverable ? "alert-warning" : "alert-danger"}`}
+          role="alert"
         >
-          {messages.length === 0 ? (
-            <p className="text-muted">No messages yet.</p>
-          ) : (
-            messages.map((msg) => (
-              <div key={msg.id} className="mb-1">
-                {msg.text}
-              </div>
-            ))
-          )}
-          <div ref={messagesEndRef} />
+          {failure.message}
         </div>
-        <div className="input-group">
-          <input
-            type="text"
-            className="form-control"
-            placeholder="Type a message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-          />
-          <button
-            className="btn btn-primary"
-            onClick={handleSend}
-            disabled={!isAuthenticated}
-          >
-            Send
-          </button>
-        </div>
+      )}
+      <div
+        className="border rounded p-3 mb-3 bg-body-secondary"
+        style={{ height: "300px", overflowY: "auto" }}
+      >
+        {messages.length === 0 ? (
+          <p className="text-muted">{t("websocket.empty")}</p>
+        ) : (
+          messages.map((message) => (
+            <div key={message.id} className="mb-1">
+              <span className="text-muted me-2">
+                {formatTime(message.sent_at)}
+              </span>
+              <span className="fw-semibold me-2">{message.sender}</span>
+              <span>{message.text}</span>
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
       </div>
-    </>
+      <div className="input-group">
+        <label htmlFor="websocket-message" className="visually-hidden">
+          {t("websocket.messageLabel")}
+        </label>
+        <input
+          type="text"
+          id="websocket-message"
+          className="form-control"
+          placeholder={t("websocket.messagePlaceholder")}
+          value={input}
+          onChange={(event) => {
+            setInput(event.target.value);
+          }}
+          onKeyDown={handleKeyDown}
+        />
+        <button
+          className="btn btn-primary"
+          onClick={handleSend}
+          disabled={!isReady}
+        >
+          {t("websocket.send")}
+        </button>
+      </div>
+    </div>
   );
 };

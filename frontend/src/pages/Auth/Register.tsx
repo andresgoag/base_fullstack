@@ -1,140 +1,166 @@
-import { useForm, Controller } from "react-hook-form";
+import { useMemo } from "react";
+import * as z from "zod";
 import { Link } from "react-router";
+import { useWatch } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useAuthContext } from "context/auth/AuthContext";
-import PhoneInput, { isValidPhoneNumber } from "react-phone-number-input";
-import flags from "react-phone-number-input/flags";
-import "react-phone-number-input/style.css";
+import { TextField } from "components/FormField/TextField";
+import { FormField } from "components/FormField/FormField";
+import { PhoneField } from "components/PhoneField/PhoneField";
+import { buildPhoneField } from "components/PhoneField/phoneSchema";
+import { PasswordStrengthMeter } from "components/PasswordStrengthMeter/PasswordStrengthMeter";
+import { SubmitButton } from "components/SubmitButton/SubmitButton";
+import {
+  getFieldNames,
+  useValidatedForm,
+  type FormSchema,
+} from "forms/useValidatedForm";
+import { useServerFieldErrors } from "forms/useServerFieldErrors";
+import { readServerFormErrors } from "forms/serverErrors";
+import {
+  buildEmailField,
+  buildPersonNameField,
+  buildRequiredPasswordField,
+  checkPasswordRules,
+  MAX_PERSON_NAME_LENGTH,
+} from "validation";
+import type { RegisterData } from "models";
+import { ROUTES } from "routes";
 
-type RegisterFormValues = {
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  password: string;
-};
+const buildRegisterSchema = (t: TFunction): FormSchema<RegisterData> =>
+  z
+    .object({
+      first_name: buildPersonNameField(t, "validation.firstName"),
+      last_name: buildPersonNameField(t, "validation.lastName"),
+      email: buildEmailField(t),
+      phone: buildPhoneField(t),
+      password: buildRequiredPasswordField(t("validation.passwordRequired")),
+      re_password: buildRequiredPasswordField(
+        t("validation.confirmPasswordRequired"),
+      ),
+    })
+    .superRefine((values, context) => {
+      checkPasswordRules(t, context, {
+        password: values.password,
+        confirmation: values.re_password,
+        passwordPath: "password",
+        confirmationPath: "re_password",
+        similarTo: [values.email, values.first_name],
+      });
+    });
 
-export const RegisterForm: React.FC = () => {
+export const RegisterForm = () => {
+  const { t } = useTranslation();
+  const { register: registration } = useAuthContext();
+  const schema = useMemo(() => buildRegisterSchema(t), [t]);
+  const fields = useMemo(() => getFieldNames(schema), [schema]);
   const {
     register,
     handleSubmit,
     control,
+    setError,
     formState: { errors },
-  } = useForm<RegisterFormValues>();
+  } = useValidatedForm(schema, { disabled: registration.isPending });
 
-  const { register: registerUser, isPendingRegister } = useAuthContext();
-
-  const onSubmit = (data: RegisterFormValues) => {
-    registerUser({ ...data, re_password: data.password });
-  };
+  useServerFieldErrors(registration.error, setError, fields);
+  const { formMessage } = readServerFormErrors(registration.error, fields);
+  const password = useWatch({ control, name: "password" }) ?? "";
+  const email = useWatch({ control, name: "email" }) ?? "";
+  const firstName = useWatch({ control, name: "first_name" }) ?? "";
 
   return (
     <>
-      <h3 className="mb-4 text-center">Register</h3>
-      <form onSubmit={handleSubmit(onSubmit)} noValidate>
-        <div className="mb-3">
-          <label htmlFor="first_name" className="form-label">
-            First Name
-          </label>
-          <input
-            type="text"
-            className="form-control"
-            id="first_name"
-            {...register("first_name", { required: "Name is required." })}
-          />
-          <p className="text-danger">{errors.first_name?.message}</p>
+      <h1 className="h3 mb-4 text-center">{t("auth.register.heading")}</h1>
+      {registration.isError && formMessage !== null && (
+        <div className="alert alert-danger" role="alert">
+          {formMessage}
         </div>
-
-        <div className="mb-3">
-          <label htmlFor="last_name" className="form-label">
-            Last Name
-          </label>
-          <input
-            type="text"
-            className="form-control"
-            id="last_name"
-            {...register("last_name", { required: "Last name is required." })}
-          />
-          <p className="text-danger">{errors.last_name?.message}</p>
-        </div>
-
-        <div className="mb-3">
-          <label htmlFor="email" className="form-label">
-            Email address
-          </label>
-          <input
-            type="email"
-            className="form-control"
-            id="email"
-            {...register("email", {
-              required: "Email is required.",
-              pattern: {
-                value: /\S+@\S+\.\S+/,
-                message: "Entered value does not match email format",
-              },
-            })}
-          />
-          <p className="text-danger">{errors.email?.message}</p>
-        </div>
-
-        <div className="mb-3">
-          <label htmlFor="phone" className="form-label">
-            Phone Number
-          </label>
-          <Controller
-            name="phone"
-            control={control}
-            rules={{
-              required: "Phone number is required.",
-              validate: (value) =>
-                isValidPhoneNumber(value || "") ||
-                "Enter a valid international phone number",
-            }}
-            render={({ field: { onChange, value } }) => (
-              <PhoneInput
-                international
-                defaultCountry="US"
-                value={value}
-                onChange={onChange}
-                flags={flags}
-                className="form-control d-flex align-items-center"
-                id="phone"
+      )}
+      <form
+        onSubmit={(event) =>
+          void handleSubmit((data) => {
+            registration.submit(data);
+          })(event)
+        }
+        noValidate
+      >
+        <TextField
+          id="first_name"
+          label={t("fields.firstName")}
+          autoComplete="given-name"
+          maxLength={MAX_PERSON_NAME_LENGTH}
+          error={errors.first_name?.message}
+          registration={register("first_name")}
+        />
+        <TextField
+          id="last_name"
+          label={t("fields.lastName")}
+          autoComplete="family-name"
+          maxLength={MAX_PERSON_NAME_LENGTH}
+          error={errors.last_name?.message}
+          registration={register("last_name")}
+        />
+        <TextField
+          id="email"
+          label={t("fields.email")}
+          type="email"
+          autoComplete="email"
+          error={errors.email?.message}
+          registration={register("email")}
+        />
+        <PhoneField
+          id="phone"
+          label={t("fields.phone")}
+          name="phone"
+          control={control}
+          error={errors.phone?.message}
+          isDisabled={registration.isPending}
+        />
+        <FormField
+          id="password"
+          label={t("fields.password")}
+          error={errors.password?.message}
+        >
+          {(controlProps) => (
+            <>
+              <input
+                {...controlProps}
+                {...register("password")}
+                type="password"
+                autoComplete="new-password"
+                className={`form-control ${
+                  errors.password === undefined ? "" : "is-invalid"
+                }`}
               />
-            )}
-          />
-          <p className="text-danger">{errors.phone?.message}</p>
-        </div>
-
-        <div className="mb-3">
-          <label htmlFor="password" className="form-label">
-            Password
-          </label>
-          <input
-            type="password"
-            className="form-control"
-            id="password"
-            {...register("password", { required: "Password is required." })}
-          />
-          <p className="text-danger">{errors.password?.message}</p>
-        </div>
-
+              <PasswordStrengthMeter
+                password={password}
+                similarTo={[email, firstName]}
+              />
+            </>
+          )}
+        </FormField>
+        <TextField
+          id="re_password"
+          label={t("fields.confirmPassword")}
+          type="password"
+          autoComplete="new-password"
+          error={errors.re_password?.message}
+          registration={register("re_password")}
+        />
         <div className="d-flex justify-content-center">
-          <button
-            type="submit"
-            className="btn btn-primary w-100"
-            disabled={isPendingRegister}
-          >
-            {isPendingRegister ? (
-              <div className="spinner-border text-light" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
-            ) : (
-              "Register"
-            )}
-          </button>
+          <SubmitButton
+            label={t("auth.register.submit")}
+            pendingLabel={t("auth.register.submitting")}
+            isPending={registration.isPending}
+          />
         </div>
       </form>
-      <div className="d-flex justify-content-center p-3">
-        <Link to="/auth/login">Already have an Account? Login here</Link>
+      <div className="d-flex flex-column align-items-center gap-2 p-3">
+        <Link to={ROUTES.login}>{t("auth.register.haveAccount")}</Link>
+        <Link to={ROUTES.resendActivation}>
+          {t("auth.register.resendActivation")}
+        </Link>
       </div>
     </>
   );

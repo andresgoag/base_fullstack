@@ -1,67 +1,87 @@
-import { useEffect, useRef, useState, useCallback } from "react";
-import { useAuthContext } from "context/auth/AuthContext";
-import { WS_BASE_URL } from "config";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  ensureFreshAccessToken,
+  getAuthSession,
+  subscribeToAuthSession,
+} from "auth/authSession";
+import { queryKeys } from "queries/queryKeys";
+import {
+  RoomConnection,
+  type ConnectionFailure,
+  type ConnectionStatus,
+} from "websocket/RoomConnection";
+import type { RoomMessage } from "websocket/protocol";
 
-export type WebSocketMessage = {
-  id: number;
-  text: string;
-};
+const MAX_KEPT_MESSAGES = 200;
+
+const appendMessage = (
+  messages: RoomMessage[],
+  message: RoomMessage,
+): RoomMessage[] =>
+  messages.some((kept) => kept.id === message.id)
+    ? messages
+    : [...messages, message].slice(-MAX_KEPT_MESSAGES);
 
 export const useWebSocket = (roomName: string) => {
-  const { access } = useAuthContext();
-  const socketRef = useRef<WebSocket | null>(null);
-  const messageIdRef = useRef(0);
-  const [messages, setMessages] = useState<WebSocketMessage[]>([]);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const queryClient = useQueryClient();
+  const session = useSyncExternalStore(subscribeToAuthSession, getAuthSession);
+  const isSignedIn = session.access !== null;
+  const [socketStatus, setSocketStatus] = useState<ConnectionStatus>("closed");
+  const [failure, setFailure] = useState<ConnectionFailure | null>(null);
+  const connectionRef = useRef<RoomConnection | null>(null);
+  const messagesKey = queryKeys.websocket.room(roomName);
+
+  const { data: messages = [] } = useQuery({
+    queryKey: messagesKey,
+    queryFn: (): RoomMessage[] => [],
+    staleTime: Infinity,
+    gcTime: Infinity,
+  });
 
   useEffect(() => {
-    if (!access) return;
-    const socket = new WebSocket(`${WS_BASE_URL}/ws/echo/${roomName}/`);
-    socketRef.current = socket;
-
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ type: "auth", token: access }));
-    };
-
-    socket.onclose = () => setIsAuthenticated(false);
-
-    socket.onmessage = (event) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(event.data);
-      } catch {
-        parsed = null;
-      }
-      if (
-        parsed !== null &&
-        typeof parsed === "object" &&
-        (parsed as Record<string, unknown>).type === "auth_ok"
-      ) {
-        setIsAuthenticated(true);
-        return;
-      }
-      setMessages((prev) => [
-        ...prev,
-        { id: messageIdRef.current++, text: event.data },
-      ]);
-    };
-
+    if (!isSignedIn) return;
+    const connection = new RoomConnection({
+      roomName,
+      getAccessToken: async () => {
+        await ensureFreshAccessToken();
+        return getAuthSession().access;
+      },
+      onMessage: (message) => {
+        queryClient.setQueryData<RoomMessage[]>(
+          queryKeys.websocket.room(roomName),
+          (current = []) => appendMessage(current, message),
+        );
+      },
+      onStatusChange: setSocketStatus,
+      onFailure: setFailure,
+    });
+    connectionRef.current = connection;
+    connection.start();
     return () => {
-      if (
-        socket.readyState === WebSocket.OPEN ||
-        socket.readyState === WebSocket.CONNECTING
-      ) {
-        socket.close();
-      }
-      socketRef.current = null;
+      connection.stop();
+      connectionRef.current = null;
     };
-  }, [access, roomName]);
+  }, [roomName, isSignedIn, queryClient]);
 
-  const sendMessage = useCallback((message: string) => {
-    if (socketRef.current?.readyState === WebSocket.OPEN) {
-      socketRef.current.send(message);
-    }
-  }, []);
+  const sendMessage = useCallback(
+    (text: string): boolean => connectionRef.current?.send(text) ?? false,
+    [],
+  );
 
-  return { messages, isAuthenticated, sendMessage };
+  const status: ConnectionStatus = isSignedIn ? socketStatus : "closed";
+
+  return {
+    messages,
+    status,
+    failure,
+    isReady: status === "ready",
+    sendMessage,
+  };
 };

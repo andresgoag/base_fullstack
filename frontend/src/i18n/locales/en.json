@@ -1,0 +1,209 @@
+{
+  "app": {
+    "name": "Fullstack project"
+  },
+  "common": {
+    "skipToContent": "Skip to main content",
+    "loading": "Loading...",
+    "backToLogin": "Back to login",
+    "backToHome": "Back to home",
+    "backToDashboard": "Back to dashboard",
+    "close": "Close",
+    "language": "Language",
+    "checkYourEmail": "Check your email",
+    "notifications": "Notifications"
+  },
+  "nav": {
+    "brand": "My App",
+    "dashboard": "Dashboard",
+    "websocket": "WebSocket",
+    "comments": "Comments",
+    "account": "Account",
+    "logout": "Logout",
+    "loadingName": "Loading..."
+  },
+  "titles": {
+    "home": "Home",
+    "login": "Login",
+    "register": "Register",
+    "forgotPassword": "Forgot password",
+    "resetPassword": "Reset password",
+    "activate": "Activate account",
+    "resendActivation": "Resend activation",
+    "dashboard": "Dashboard",
+    "websocket": "WebSocket",
+    "comments": "Similar comments",
+    "account": "Account",
+    "notFound": "Page not found"
+  },
+  "home": {
+    "heading": "Welcome to the Home Page",
+    "intro": "This is the main page of our application.",
+    "login": "Login",
+    "register": "Register"
+  },
+  "auth": {
+    "login": {
+      "heading": "Login",
+      "submit": "Login",
+      "submitting": "Signing in...",
+      "forgotPassword": "Forgot your password?",
+      "noAccount": "Don't have an Account? Register here"
+    },
+    "register": {
+      "heading": "Register",
+      "submit": "Register",
+      "submitting": "Creating account...",
+      "haveAccount": "Already have an Account? Login here",
+      "resendActivation": "Resend activation email",
+      "activationSent": "Account created. Check your email to activate it."
+    },
+    "forgotPassword": {
+      "heading": "Forgot password",
+      "submit": "Send reset link",
+      "submitting": "Sending...",
+      "sent": "If an account exists for that address, we sent a link to reset your password."
+    },
+    "resendActivation": {
+      "heading": "Resend activation",
+      "submit": "Resend activation email",
+      "submitting": "Sending...",
+      "sent": "If that account still needs activation, we sent a new link."
+    },
+    "resetPassword": {
+      "heading": "Choose a new password",
+      "submit": "Reset password",
+      "submitting": "Saving...",
+      "invalidLink": "Invalid reset link",
+      "requestNewLink": "Request a new link",
+      "done": "Your password has been reset."
+    },
+    "activate": {
+      "invalidLink": "Invalid activation link",
+      "requestNewLink": "Request a new link",
+      "working": "Activating your account...",
+      "done": "Account activated",
+      "doneDetail": "Your account is ready. You can sign in now.",
+      "failed": "Activation failed",
+      "goToLogin": "Go to login"
+    }
+  },
+  "fields": {
+    "email": "Email address",
+    "password": "Password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmNewPassword": "Confirm new password",
+    "confirmPassword": "Confirm Password",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "phone": "Phone Number"
+  },
+  "account": {
+    "heading": "Account",
+    "profile": "Profile",
+    "loadingProfile": "Loading your profile...",
+    "save": "Save changes",
+    "saving": "Saving...",
+    "updated": "Profile updated.",
+    "changePassword": "Change password",
+    "changePasswordSubmit": "Change password",
+    "passwordChanged": "Password changed."
+  },
+  "dashboard": {
+    "greeting": "Hello {{name}}!",
+    "heading": "Dashboard",
+    "loadingGreeting": "Loading your details"
+  },
+  "comments": {
+    "heading": "Similar comments",
+    "intro": "Every keystroke starts a search and cancels the previous one. Results come from the pgvector similarity endpoint.",
+    "searchLabel": "Describe what you are looking for",
+    "searchPlaceholder": "delivery was late",
+    "prompt": "Type something to search.",
+    "searching": "Searching comments...",
+    "empty": "No comments matched that search.",
+    "similarity": "{{percentage}}% similar"
+  },
+  "websocket": {
+    "heading": "WebSocket Echo",
+    "statusLabel": "Status",
+    "status": {
+      "connecting": "Connecting...",
+      "authenticating": "Joining the room...",
+      "ready": "Connected",
+      "reconnecting": "Reconnecting...",
+      "closed": "Disconnected"
+    },
+    "empty": "No messages yet.",
+    "messageLabel": "Message",
+    "messagePlaceholder": "Type a message...",
+    "send": "Send",
+    "closeReason": {
+      "unauthorized": "The server rejected the session for this room.",
+      "messageTooLarge": "That message was too long to send.",
+      "tokenExpired": "The session expired while the room was open.",
+      "authTimeout": "The server closed the room before it could be joined.",
+      "rateLimitExceeded": "Too many messages were sent, so the room was closed.",
+      "unknown": "The realtime connection was interrupted."
+    },
+    "failed": "The realtime connection failed.",
+    "signInRequired": "You need to be signed in to join this room."
+  },
+  "notFound": {
+    "code": "404",
+    "detail": "We could not find the page you were looking for."
+  },
+  "routeError": {
+    "heading": "Something went wrong",
+    "reload": "Reload the application",
+    "unexpected": "An unexpected error stopped this page from loading."
+  },
+  "session": {
+    "expired": "Your session expired, please log in again."
+  },
+  "validation": {
+    "emailRequired": "Email is required.",
+    "emailInvalid": "Enter a valid email address.",
+    "required": "{{field}} is required.",
+    "maxLength": "Use at most {{count}} characters.",
+    "passwordRequired": "Password is required.",
+    "currentPasswordRequired": "Current password is required.",
+    "confirmPasswordRequired": "Please confirm your password.",
+    "passwordsDoNotMatch": "Passwords do not match.",
+    "passwordTooWeak": "Choose a stronger password.",
+    "phoneRequired": "Phone number is required.",
+    "phoneInvalid": "Enter a valid international phone number.",
+    "firstName": "First name",
+    "lastName": "Last name"
+  },
+  "passwordStrength": {
+    "label": "Password strength",
+    "weak": "Weak",
+    "fair": "Fair",
+    "good": "Good",
+    "strong": "Strong",
+    "problem": {
+      "minimumLength": "Use at least {{count}} characters.",
+      "onlyNumbers": "Do not use only numbers.",
+      "tooCommon": "This password is too common.",
+      "personal": "Do not reuse your name or email."
+    }
+  },
+  "apiError": {
+    "network": "We could not reach the server. Check your connection and try again.",
+    "validation": "Please review the highlighted fields.",
+    "authentication": "Your session is no longer valid. Please log in again.",
+    "permission": "You do not have access to this resource.",
+    "notFound": "We could not find what you were looking for.",
+    "server": "Something went wrong on our side. Please try again in a moment.",
+    "contract": "The server returned data this application did not understand.",
+    "unknown": "An unexpected error occurred."
+  },
+  "toast": {
+    "success": "Success",
+    "danger": "Error",
+    "warning": "Warning",
+    "secondary": "Notice"
+  }
+}

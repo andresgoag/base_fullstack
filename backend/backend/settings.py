@@ -19,8 +19,10 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
+    "rest_framework_simplejwt",
     "rest_framework_simplejwt.token_blacklist",
     "djoser",
+    "drf_spectacular",
     "phonenumber_field",
     "user",
     "channels",
@@ -32,6 +34,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -65,10 +68,28 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [env("CHANNEL_LAYERS_VALKEY_URL", default="redis://localhost:6379")]
+            "hosts": [
+                env("CHANNEL_LAYERS_VALKEY_URL", default="redis://localhost:6379")
+            ],
+            "capacity": env.int("CHANNEL_LAYERS_CAPACITY", default=500),
+            "expiry": env.int("CHANNEL_LAYERS_EXPIRY", default=10),
         },
     }
 }
+
+OPENAPI_SCHEMA_FILE = env("OPENAPI_SCHEMA_FILE", default="/schema/openapi.yml")
+
+WEBSOCKET_PROTOCOL_FILE = env(
+    "WEBSOCKET_PROTOCOL_FILE", default="/schema/websocket.json"
+)
+
+WEBSOCKET_AUTH_TIMEOUT_SECONDS = env.float(
+    "WEBSOCKET_AUTH_TIMEOUT_SECONDS", default=10.0
+)
+WEBSOCKET_RATE_LIMIT_MESSAGES = env.int("WEBSOCKET_RATE_LIMIT_MESSAGES", default=30)
+WEBSOCKET_RATE_LIMIT_WINDOW_SECONDS = env.float(
+    "WEBSOCKET_RATE_LIMIT_WINDOW_SECONDS", default=10.0
+)
 
 DATABASES = {"default": env.db("DATABASE_URL")}
 
@@ -86,7 +107,12 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = env("LANGUAGE_CODE", default="en-us")
+LANGUAGES = [
+    ("en", "English"),
+    ("es", "Espanol"),
+]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
@@ -110,7 +136,17 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "auth": env("AUTH_THROTTLE_RATE", default="10/minute"),
+        "embeddings": env("EMBEDDINGS_THROTTLE_RATE", default="30/minute"),
     },
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "Fullstack project API",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/v1",
+    "COMPONENT_SPLIT_REQUEST": True,
 }
 
 SIMPLE_JWT = {
@@ -129,9 +165,26 @@ OPENAI_API_KEY = env("OPENAI_API_KEY", default="")
 EMBEDDING_MODEL_NAME = env("EMBEDDING_MODEL_NAME", default="text-embedding-3-small")
 EMBEDDING_DIMENSIONS = 1536
 
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@localhost")
+
+FRONTEND_PROTOCOL = env("FRONTEND_PROTOCOL", default="http")
+FRONTEND_DOMAIN = env("FRONTEND_DOMAIN", default="localhost:5173")
+
 DJOSER = {
     "LOGIN_FIELD": "email",
     "USER_CREATE_PASSWORD_RETYPE": True,
+    "PASSWORD_RESET_CONFIRM_RETYPE": True,
+    "SET_PASSWORD_RETYPE": True,
+    "PASSWORD_RESET_SHOW_EMAIL_NOT_FOUND": False,
+    "SEND_ACTIVATION_EMAIL": env.bool("SEND_ACTIVATION_EMAIL", default=False),
+    "EMAIL_FRONTEND_PROTOCOL": FRONTEND_PROTOCOL,
+    "EMAIL_FRONTEND_DOMAIN": FRONTEND_DOMAIN,
+    "EMAIL_FRONTEND_SITE_NAME": env("SITE_NAME", default="Fullstack project"),
+    "ACTIVATION_URL": "auth/activate/{uid}/{token}",
+    "PASSWORD_RESET_CONFIRM_URL": "auth/reset-password/{uid}/{token}",
     "SERIALIZERS": {
         "user_create": "user.api.serializers.UserCreateSerializer",
         "current_user": "user.api.serializers.UserSerializer",

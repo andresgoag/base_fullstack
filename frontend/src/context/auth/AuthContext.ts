@@ -1,57 +1,43 @@
-import type { User } from "models";
+import type { LoginData, RegisterData, User } from "models";
 import { createContext, useContext } from "react";
 
-export type LoginData = {
-  email: string;
-  password: string;
+export type AuthAction<Input> = {
+  submit: (input: Input) => void;
+  isPending: boolean;
+  isError: boolean;
+  error: Error | null;
 };
 
-export type RegisterData = {
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string;
-  password: string;
-  re_password: string;
-};
-
-interface AuthContextObject {
+export type AuthSessionState = {
   access: string | null;
   refresh: string | null;
-  login: (data: LoginData) => void;
-  isPendingLogin: boolean;
-  isErrorLogin: boolean;
-  errorLogin: Error | null;
+  isAuthenticated: boolean;
+  isRestoring: boolean;
+};
+
+export type CurrentUserState = {
+  user: User | null;
+  isLoading: boolean;
+};
+
+export type AuthContextValue = {
+  session: AuthSessionState;
+  currentUser: CurrentUserState;
+  login: AuthAction<LoginData>;
+  register: AuthAction<RegisterData>;
   logout: () => void;
-  currentUser: User | null;
-  isLoadingUser: boolean;
-  register: (data: RegisterData) => void;
-  isPendingRegister: boolean;
-  isErrorRegister: boolean;
-  errorRegister: Error | null;
-  isInitializing: boolean;
-}
+};
 
-export const AuthContext = createContext<AuthContextObject>({
-  access: null,
-  refresh: null,
-  login: () => {},
-  isPendingLogin: false,
-  isErrorLogin: false,
-  errorLogin: null,
-  logout: () => {},
-  currentUser: null,
-  isLoadingUser: false,
-  register: () => {},
-  isPendingRegister: false,
-  isErrorRegister: false,
-  errorRegister: null,
-  isInitializing: true,
-});
+export const AuthContext = createContext<AuthContextValue | undefined>(
+  undefined,
+);
 
-export const useAuthContext = () => {
+export const useAuthContext = (): AuthContextValue => {
   const context = useContext(AuthContext);
-  if (!context)
-    throw new Error("useAuthContext must be used within a AuthProvider");
+  if (!context) {
+    throw new Error(
+      "useAuthContext must be used within an AuthContextProvider",
+    );
+  }
   return context;
 };

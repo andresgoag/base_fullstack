@@ -1,5 +1,12 @@
-import type { ToastMessageData } from "models";
 import { createContext, useContext } from "react";
+
+export type ToastMessageData = {
+  id: number;
+  message: string;
+  type: "success" | "danger" | "secondary" | "warning";
+  title?: string;
+  duration?: number;
+};
 
 export type ShowToastData = Omit<ToastMessageData, "id">;
 
