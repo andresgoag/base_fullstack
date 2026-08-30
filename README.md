@@ -1,228 +1,228 @@
 # base_fullstack
 
-A batteries-included fullstack template for kicking off new projects. Fork it, rename a few things, set your env vars, and you have a typed React frontend talking to a Django REST + Channels backend, backed by PostgreSQL (with `pgvector`) and Valkey — all wired together with Docker Compose and a CI pipeline.
+A batteries-included fullstack template: a typed React frontend talking to a
+Django REST + Channels backend, with PostgreSQL (`pgvector`), Valkey, Docker
+Compose and CI already wired together.
 
-## What's in the box
+## Frontend
 
-- **JWT authentication** with short-lived access tokens, rotating refresh tokens, server-side blacklisting, and rate-limited auth endpoints. Custom email-based user model with a required phone field.
-- **Real-time WebSockets** via Django Channels — a room-based echo consumer with JWT auth-on-connect and a ready-to-use React hook.
-- **Semantic similarity search** with `pgvector` + OpenAI embeddings — comments are auto-embedded on save and queried by cosine distance.
-- **Typed end to end** — TypeScript (strict) on the frontend, self-documenting Python on the backend.
-- **Dev tooling** — Black/Flake8/Pytest for the backend, ESLint/Prettier/Vitest for the frontend, all enforced in GitHub Actions.
+React 19 and TypeScript on Vite, served by `bun`. The frontend is a single-page
+app that authenticates with JWTs, talks to a versioned REST API described by an
+OpenAPI schema, and holds a live WebSocket connection to the backend.
 
-## Tech stack
+Everything below is the shape the template expects new features to follow.
+Deeper notes on each area live in [frontend/README.md](frontend/README.md).
 
-| Layer        | Choice                                                                 |
-| ------------ | ---------------------------------------------------------------------- |
-| Frontend     | React 19 · TypeScript · Vite 7 · React Router 7 · React Query · Axios · React Hook Form · React Bootstrap · SCSS |
-| Backend      | Python 3.13 · Django 5.2 · Django REST Framework · Djoser · SimpleJWT · Django Channels · Daphne (ASGI) |
-| Data         | PostgreSQL 16 (`pgvector/pgvector:pg16`) · Valkey 8 (channel layer + cache) |
-| Embeddings   | OpenAI API (`text-embedding-3-small` by default)                       |
-| Packaging    | `uv` (backend) · `bun` (frontend)                                      |
-| Orchestration| Docker Compose · GitHub Actions CI                                     |
+### Stack
 
-## Architecture
+| Concern      | Choice                                                         |
+| ------------ | -------------------------------------------------------------- |
+| UI           | React 19 · React Bootstrap · Bootstrap 5 (SCSS)                |
+| Language     | TypeScript 7 (`tsc`) with TypeScript 6 kept alongside for lint |
+| Build        | Vite 8 (rolldown) · bun                                        |
+| Routing      | react-router 8, data router                                    |
+| Server state | TanStack Query 5                                               |
+| Forms        | react-hook-form + zod via the standard-schema resolver         |
+| HTTP         | axios                                                          |
+| i18n         | i18next · react-i18next                                        |
+| Testing      | Vitest 4 · Testing Library · axe-core · istanbul coverage      |
+| Quality      | ESLint 10 (type-aware, jsx-a11y) · Prettier                    |
 
-```
-┌─────────────┐   HTTP / WS    ┌──────────────────────────┐
-│  Frontend   │ ─────────────► │  Backend (Daphne / ASGI)  │
-│  React+Vite │                │  Django REST + Channels   │
-│  :5173      │ ◄───────────── │  :8000                    │
-└─────────────┘                └────────────┬──────────────┘
-                                             │
-                          ┌──────────────────┴──────────────────┐
-                          ▼                                      ▼
-                 ┌─────────────────┐                   ┌──────────────────┐
-                 │ PostgreSQL 16   │                   │   Valkey 8       │
-                 │ + pgvector      │                   │ channel layer    │
-                 │ :5432           │                   │ :6379            │
-                 └─────────────────┘                   └──────────────────┘
-```
+### Running it
 
-The backend runs under Daphne (ASGI) so HTTP and WebSocket traffic share one process. `backend/backend/asgi.py` uses a `ProtocolTypeRouter` to split the two.
-
-## Quick start
-
-Prerequisites: **Docker Desktop**. (Optional: `uv` and `bun` locally if you want to run tooling outside the containers.)
+The frontend runs in the `frontend` Compose service; run its tooling there too.
 
 ```bash
-# 1. Create env files from the samples
-cp .env.sample .env
-cp frontend/.env.sample frontend/.env
-
-# 2. Build and start everything
-docker compose up --build
-
-# 3. Seed development data (in a second terminal)
-docker compose exec backend python manage.py seed
-docker compose exec backend python manage.py seed_comments
+docker compose up --build --wait                      # start the whole environment
+docker compose exec frontend bun run typecheck        # tsc -b
+docker compose exec frontend bun run lint             # ESLint
+docker compose exec frontend bun run format           # Prettier (write)
+docker compose exec frontend bun run test             # Vitest
+docker compose exec frontend bun run test:coverage    # Vitest + coverage
+docker compose exec frontend bun run build            # typecheck + production build
+docker compose exec frontend bun run contracts        # regenerate API + protocol types
+docker compose exec frontend bun add <package>        # add a dependency
 ```
 
-Then visit:
+`node_modules` lives in a named volume, so after adding a dependency run
+`bun install --frozen-lockfile` on the host as well to keep your editor's
+TypeScript server in step with the container.
 
-| Service       | URL                          |
-| ------------- | ---------------------------- |
-| Frontend      | http://localhost:5173        |
-| Backend API   | http://localhost:8000        |
-| Django admin  | http://localhost:8000/admin  |
+`frontend/.env` supplies `VITE_API_BASE_URL` and `VITE_WEBSOCKET_URL`. Both are
+required — `src/config.ts` throws at startup if either is missing rather than
+letting requests go to `undefined/...`.
 
-Seeded accounts (from `backend/user/management/commands/seed.py`):
-
-| Role  | Email           | Password           |
-| ----- | --------------- | ------------------ |
-| Admin | `admin@dev.com` | `goodskunk95`      |
-| User  | `user@dev.com`  | `Str0ngP@ssword!`  |
-
-> Migrations and `collectstatic` run automatically on backend container start. The `seed` commands are idempotent — pass `--reset` to wipe and recreate the seeded rows.
-
-## Configuration
-
-All configuration is env-driven. There are two env files; both are gitignored, and `.env.sample` files are the templates.
-
-### Root `.env` (consumed by the backend container via `env_file`)
-
-| Variable                  | Default                                                  | Purpose                                                   |
-| ------------------------- | -------------------------------------------------------- | --------------------------------------------------------- |
-| `ACCESS_LIFETIME`         | `300`                                                    | Access token lifetime in seconds (5 min)                  |
-| `REFRESH_LIFETIME`        | `604800`                                                 | Refresh token lifetime in seconds (7 days)                |
-| `DJANGO_SECRET_KEY`       | `change-me-in-production`                                | Django secret key — **change this**                       |
-| `DJANGO_ALLOWED_HOSTS`    | `localhost,127.0.0.1`                                    | Comma-separated allowed hosts                             |
-| `DJANGO_DEBUG`            | `True`                                                   | Debug mode — set `False` in production                    |
-| `CORS_ALLOWED_ORIGINS`    | `http://localhost:5173`                                  | Comma-separated origins allowed to call the API           |
-| `CHANNEL_LAYERS_VALKEY_URL`| `redis://valkey:6379`                                   | Valkey URL for the Channels layer                         |
-| `AUTH_THROTTLE_RATE`      | `10/minute`                                              | Rate limit applied to auth endpoints                      |
-| `DATABASE_URL`            | `postgresql://postgres:dev_password@postgres:5432/postgres` | Postgres connection string                             |
-| `PHONENUMBER_DEFAULT_REGION` | `US`                                                  | Default region for parsing phone numbers                  |
-| `OPENAI_API_KEY`          | _(empty)_                                                | OpenAI key for embeddings — optional                      |
-| `EMBEDDING_MODEL_NAME`    | `text-embedding-3-small`                                 | OpenAI embedding model used when a key is present         |
-
-### `frontend/.env` (consumed by Vite at build/dev time)
-
-| Variable             | Default                  | Purpose                  |
-| -------------------- | ------------------------ | ------------------------ |
-| `VITE_API_BASE_URL`  | `http://localhost:8000`  | Backend REST base URL    |
-| `VITE_WEBSOCKET_URL` | `ws://localhost:8000`    | WebSocket base URL       |
-
-### Changing ports
-
-Inter-service traffic uses container ports over the Compose network, so only browser-facing ports (backend, frontend) need env changes when remapped. See [.claude/CLAUDE.md](.claude/CLAUDE.md) for the override recipe:
-
-- **Backend host port** (e.g. `8001:8000`): set `VITE_API_BASE_URL=http://localhost:8001` and `VITE_WEBSOCKET_URL=ws://localhost:8001` in `frontend/.env`, then restart the frontend.
-- **Frontend host port** (e.g. `5174:5173`): set `CORS_ALLOWED_ORIGINS=http://localhost:5174` in root `.env`, then restart the backend.
-
-Put port remappings in a gitignored `docker-compose.override.yml` rather than editing `docker-compose.yml`.
-
-## API reference
-
-### Authentication (Djoser + SimpleJWT)
-
-| Method | Path                                  | Description                                  |
-| ------ | ------------------------------------- | -------------------------------------------- |
-| POST   | `/auth/users/`                        | Register a new user                          |
-| GET    | `/auth/users/me/`                     | Current user (requires `Authorization`)      |
-| POST   | `/auth/users/set_password/`           | Change password                              |
-| POST   | `/auth/users/reset_password/`         | Request a password-reset email               |
-| POST   | `/auth/users/reset_password_confirm/` | Confirm a password reset                     |
-| POST   | `/auth/jwt/create/`                   | Log in — returns `access` + `refresh` tokens |
-| POST   | `/auth/jwt/refresh/`                  | Exchange a refresh token for a new access token (rotates refresh) |
-| POST   | `/auth/jwt/blacklist/`                | Revoke a refresh token (logout)              |
-
-Login, refresh, and the Djoser user viewset are throttled at `AUTH_THROTTLE_RATE`. Refresh tokens rotate on use and old ones are blacklisted.
-
-### Comments / similarity search
-
-| Method | Path                          | Description                                                       |
-| ------ | ----------------------------- | ---------------------------------------------------------------- |
-| GET    | `/comments/similar/?text=...` | Returns the 5 closest comments by cosine distance over embeddings |
-
-`comment.models.Comment` embeds its `text` on save through a lazily-instantiated OpenAI client (`comment/embeddings.py`). Distance is computed in Postgres via `pgvector`'s `CosineDistance`. If no `OPENAI_API_KEY` is set, the model degrades gracefully and the endpoint still responds.
-
-### WebSocket echo
-
-Connect to `ws://localhost:8000/ws/echo/<room_name>/`. The connection is **unauthenticated until** the first message authenticates it:
-
-```jsonc
-// 1. client → server (first message, required)
-{ "type": "auth", "token": "<JWT access token>" }
-// 2. server → client on success
-{ "type": "auth_ok" }
-```
-
-A bad or missing token closes the socket with code `4001`. After auth, messages are broadcast to every client in `echo_<room_name>` via the Valkey channel layer (`websocket/consumers.py`). Messages over 4096 bytes are rejected. The frontend wraps all of this in `useWebSocket` (`frontend/src/hooks/useWebSocket.ts`), which exposes `{ messages, isAuthenticated, sendMessage }`. A live demo lives at `/websocket`.
-
-## Project layout
+### Layout
 
 ```
-.
-├── docker-compose.yml          # postgres · valkey · backend · frontend
-├── .env.sample                 # root env template (backend config)
-├── backend/
-│   ├── Dockerfile              # multi-stage, uv-based
-│   ├── pyproject.toml          # deps managed by uv
-│   ├── manage.py
-│   ├── backend/                # project: settings, urls, asgi (HTTP+WS router)
-│   ├── user/                   # custom email user model, JWT views, seed command
-│   ├── websocket/              # EchoConsumer + routing
-│   └── comment/                # pgvector model, embeddings, similarity API, seed
-└── frontend/
-    ├── Dockerfile.dev          # bun dev image
-    ├── package.json            # deps managed by bun
-    └── src/
-        ├── Router.tsx          # routes + AuthContextProvider
-        ├── config.ts           # reads VITE_* env vars
-        ├── api/                # axios auth functions
-        ├── context/            # AuthContext, ToastContext
-        ├── hooks/              # useWebSocket, useAxiosAuth (401 retry-refresh)
-        ├── components/         # ProtectedRoute, MainNavbar, ToastMessage
-        └── pages/              # Home, Auth (Login/Register), Dashboard, WebSocketDemo
+frontend/src/
+  a11y/         Motion preferences and the accessibility test sweep
+  api/          HTTP calls by domain, the axios clients, generated OpenAPI types
+  auth/         Token store, JWT helpers, password rules
+  components/   Reusable components, form fields, route guards
+  context/      React context providers (auth, toasts)
+  forms/        Form resolver, server error mapping
+  hooks/        Reusable hooks
+  i18n/         i18next setup and message catalogues
+  layouts/      Layout routes rendering an Outlet
+  pages/        Route-level components
+  queries/      Query keys, the configured query client, hooks per domain
+  test/         Test setup and helpers
+  websocket/    Realtime protocol schemas and the room connection
 ```
 
-### Frontend auth flow
+Imports resolve from `src/` (`context/auth/AuthContext`, not `../../context/...`)
+through the `paths` entry in `tsconfig.app.json`.
 
-The refresh token is persisted in `localStorage`; the access token is held in memory. On load the app refreshes to obtain an access token, attaches it as a `Bearer` header on every request, auto-refreshes ~30s before expiry, and retries once on a `401`. `ProtectedRoute` redirects unauthenticated users to `/auth/login`.
+### Routing
 
-## Development workflow
+`src/Router.tsx` exports a `routes` array consumed by `createBrowserRouter`, so
+the real route table can be mounted in a memory router from tests. Every path is
+a constant in `src/routes.ts`; links and redirects never hardcode a string.
 
-The repo follows a "run commands inside the right Compose service" discipline.
+Three layouts nest under a root route:
 
-### Backend
+- **`RootLayout`** holds the auth provider, the skip link, the route announcer,
+  and an `errorElement` that catches any render failure below it.
+- **`PublicRoute`** keeps a signed-in visitor off the landing and auth pages.
+- **`ProtectedRoute`** sends an anonymous visitor to the login page and remembers
+  where they were heading; `AppLayout` sits below it and renders the navigation
+  bar once for every signed-in page.
+
+Pages are attached with `lazy`, so each one is its own chunk fetched on first
+visit. Layouts and guards stay eager.
+
+### Authentication
+
+`src/auth/authSession.ts` is the single source of truth for tokens. It persists
+the pair, collapses concurrent refreshes into one in-flight request, and always
+stores the rotated refresh token the backend hands back. Three things drive a
+refresh — a bootstrap check, a timer that fires shortly before the access token
+expires, and a listener that re-checks when a background tab wakes — and all
+three go through that one function.
+
+A `storage` listener keeps every tab on the same session, so a logout in one tab
+signs the others out and clears their caches.
+
+Tokens live in `localStorage`, which means any script on the page can read them.
+The production upgrade is an `HttpOnly` refresh cookie issued by the backend;
+the store is deliberately the only module that would need to change.
+
+### Data layer
+
+`src/api` owns transport, `src/queries` owns caching, and nothing else touches
+axios.
+
+Every request goes through a sender that unwraps the body and converts failures
+into an `ApiError` carrying a `kind` (`network`, `validation`, `authentication`,
+`permission`, `notFound`, `server`, `contract`, `unknown`), the status, and
+`fieldErrors` keyed by the backend's field names. Two derived flags drive the
+rest: `isRetryable` decides retries, and `isExpected` decides whether the global
+handler shows a toast or the screen shows the error inline.
+
+`createQueryClient` sets retry policy, stale times and the global error handler
+in one place, and tests build their client from the same factory. Query keys live
+in `queries/queryKeys.ts`. Each domain exposes hooks — `useCurrentUser`,
+`useUpdateProfile`, `useSimilarComments` — rather than raw functions. Queries
+forward the abort signal, so a superseded request is cancelled;
+`useUpdateProfile` is the reference write, applying its change optimistically and
+rolling back from a snapshot on failure.
+
+### API contract
+
+The backend is the source of truth. `drf-spectacular` writes the schema into the
+shared `schema/` directory that both containers mount, and
+`bun run contracts` turns it into `src/api/schema.d.ts` plus the WebSocket close
+codes. Both artifacts are committed and CI fails on a diff.
+
+Those generated types are wired in, so drift is a build error:
+
+```ts
+export const userSchema: z.ZodType<ApiSchemas["User"]> = z.object({ ... })
+const asEndpoint = <Path extends keyof paths>(path: Path): Path => path
+```
+
+Rename a serializer field or move an endpoint, regenerate, and `tsc` points at
+every place that has to change. Response bodies are parsed with zod at the edge,
+so a mismatch raises a `contract` error instead of leaking `undefined` into the
+UI. The API sits under `/api/v1/`, with the prefix in `src/api/endpoints.ts`
+rather than the base URL.
+
+### Forms
+
+Each form is one zod schema annotated with the request type it must produce, so a
+schema that stops matching the API fails to compile. `useValidatedForm` binds it
+to react-hook-form, validates on blur, and disables the whole form while a
+mutation is in flight. Because the schema transforms as it validates, submitted
+payloads are already trimmed.
+
+`TextField`, `FormField`, `PhoneField` and `SubmitButton` carry the markup and
+the accessibility wiring. Server-side validation errors are mapped back onto the
+fields they belong to, with a banner only for whatever could not be matched — a
+duplicate email marks the email input rather than printing a sentence above the
+form.
+
+### Realtime
+
+`websocket/protocol.ts` holds zod schemas for every frame the server can send and
+the meaning of each close code. `RoomConnection` owns the socket and knows
+nothing about React: it refreshes the access token before authenticating,
+reconnects with a capped backoff, gives up on an unauthorized close, heartbeats
+and reconnects when no pong answers, and queues messages written before the room
+is ready. Its socket factory is injectable, which is how the tests drive it
+without a server.
+
+`useWebSocket` is the thin React binding. It opens a room only while a session
+exists and writes incoming messages into the query cache, so a server push
+updates TanStack Query state exactly like a fetched resource would.
+
+### Accessibility
+
+Every page renders a `<main id="main-content">` and `RootLayout` puts a skip link
+ahead of it. On each navigation the route announcer sets the document title,
+writes it into a polite live region, and moves focus to the main landmark — the
+work the browser stops doing once you own the routing.
+
+Headings start at `<h1>` on every page, field errors are announced and tied to
+their inputs, colour never carries meaning alone, toasts pause on hover and can
+always be dismissed, and animation is disabled under `prefers-reduced-motion`.
+`eslint-plugin-jsx-a11y` runs in lint and `src/a11y/accessibility.test.tsx` runs
+axe over rendered pages.
+
+### Internationalisation
+
+`src/i18n/config.ts` initialises i18next from the catalogues in
+`src/i18n/locales` (English and Spanish ship with the template), detects the
+language from `localStorage` then the browser, and keeps `<html lang>` and `dir`
+in step. Components use `useTranslation`; modules that run outside React use the
+exported `translate`; form schemas are built from `t` so validation messages
+follow the current language rather than the language at import time.
+
+The API is localised too — both axios clients send `Accept-Language` and Django's
+`LocaleMiddleware` honours it, so backend errors come back translated.
+
+### Testing
+
+Vitest with jsdom and Testing Library. Tests use the real route table, the real
+query client factory and the real providers; only the network boundary is mocked.
+`src/test` holds the render helpers, a JWT builder and a fake WebSocket.
 
 ```bash
-docker compose exec backend black .                              # format
-docker compose exec backend flake8 .                             # lint
-docker compose exec backend pytest                               # test
-docker compose exec backend python manage.py migrate             # apply migrations
-docker compose exec backend python manage.py makemigrations      # create migrations
-docker compose exec backend python manage.py seed --reset        # reseed users
-docker compose exec backend python manage.py seed_comments --reset  # reseed comments
-docker compose exec backend uv add <package>                     # add a dependency
+docker compose exec frontend bun run test
+docker compose exec frontend bun run test:coverage
 ```
 
-### Frontend
+### Adding a feature
 
-```bash
-docker compose exec frontend bun run lint           # ESLint
-docker compose exec frontend bun run format         # Prettier (write)
-docker compose exec frontend bun run format:check   # Prettier (check)
-docker compose exec frontend bun run test           # Vitest
-docker compose exec frontend bun add <package>      # add a dependency
-```
-
-### Continuous integration
-
-`.github/workflows/test_pr.yml` runs on PRs to `main`: it builds the Docker images, then runs the backend checks (Black, Flake8, Pytest) and frontend checks (ESLint, Prettier, Vitest). Keep these green locally before pushing.
-
-## Using this as a starting point
-
-1. **Rename the project.** Update `[project]` in `backend/pyproject.toml` and `name`/`description` in `frontend/package.json`.
-2. **Set real secrets.** Generate a new `DJANGO_SECRET_KEY`, set `DJANGO_DEBUG=False` for non-local environments, and lock down `DJANGO_ALLOWED_HOSTS` / `CORS_ALLOWED_ORIGINS`.
-3. **Decide on embeddings.** Add `OPENAI_API_KEY` if you want similarity search; otherwise the `comment` app can be removed.
-4. **Add a Django app.** Create it under `backend/`, register it in `settings.py`, and wire routes in `backend/backend/urls.py` (the project uses flat routing today — add an `include()` per app as it grows).
-5. **Add a page.** Drop a component under `frontend/src/pages/` and register the route in `frontend/src/Router.tsx`, wrapping it in `ProtectedRoute` if it requires auth.
-6. **Keep the patterns.** The `user`, `comment`, and `websocket` apps are the reference shapes for models, serializers, views, consumers, and seed commands.
-
-## Security notes
-
-This template stores the JWT refresh token in `localStorage` for simplicity — any JavaScript on the page (including a compromised dependency or an XSS bug) can read it. A `Content-Security-Policy` is set via a `<meta>` tag in `frontend/index.html` to reduce the attack surface.
-
-**For production**, move the refresh token to an `HttpOnly; Secure; SameSite=Lax` cookie issued by the backend. This makes it inaccessible to JavaScript and removes the XSS exfiltration risk, at the cost of needing CSRF protection on the refresh endpoint. Also replace the hardcoded dev Postgres password, set a strong `DJANGO_SECRET_KEY`, and disable `DJANGO_DEBUG`.
+1. Add or change the endpoint on the backend, then regenerate the contract:
+   `docker compose exec backend python manage.py spectacular --file /schema/openapi.yml`
+   followed by `docker compose exec frontend bun run contracts`.
+2. Add the request function in `src/api/<domain>.ts` using `sendRequest` and a
+   path from `API_ENDPOINTS`, parsing the response with a schema in
+   `src/models.ts`.
+3. Expose a hook in `src/queries/<domain>.ts` with a key from `queryKeys`.
+4. Add the page under `src/pages/`, register a lazy route with a `titleKey` in
+   `src/Router.tsx`, and add its path to `src/routes.ts`.
+5. Put every user-facing string in `src/i18n/locales/*.json`.
+6. Cover it: a schema test, a hook or page test, and — for a new page — an entry
+   in the accessibility sweep.

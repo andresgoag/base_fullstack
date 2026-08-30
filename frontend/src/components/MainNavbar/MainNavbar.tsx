@@ -1,36 +1,54 @@
-import { useAuthContext } from "context/auth/AuthContext";
+import { Link } from "react-router";
+import { useTranslation } from "react-i18next";
 import Container from "react-bootstrap/Container";
 import Nav from "react-bootstrap/Nav";
 import Navbar from "react-bootstrap/Navbar";
 import NavDropdown from "react-bootstrap/NavDropdown";
+import { useAuthContext } from "context/auth/AuthContext";
+import { LanguageSwitcher } from "components/LanguageSwitcher/LanguageSwitcher";
+import { ROUTES } from "routes";
 
 export const MainNavbar = () => {
-  const { logout } = useAuthContext();
+  const { t } = useTranslation();
+  const { logout, currentUser } = useAuthContext();
+  const displayName = currentUser.isLoading
+    ? t("nav.loadingName")
+    : (currentUser.user?.first_name ?? t("nav.account"));
+
   return (
     <Navbar collapseOnSelect expand="lg" bg="dark" variant="dark">
       <Container>
-        <Navbar.Brand href="/">My App</Navbar.Brand>
+        <Navbar.Brand as={Link} to={ROUTES.dashboard}>
+          {t("nav.brand")}
+        </Navbar.Brand>
         <Navbar.Toggle aria-controls="responsive-navbar-nav" />
         <Navbar.Collapse id="responsive-navbar-nav">
           <Nav className="me-auto">
-            <Nav.Link href="#features">Features</Nav.Link>
-            <Nav.Link href="#pricing">Pricing</Nav.Link>
-            <Nav.Link href="/websocket">WebSocket</Nav.Link>
-            <NavDropdown title="Dropdown" id="collapsible-nav-dropdown">
-              <NavDropdown.Item href="#action/3.1">Action</NavDropdown.Item>
-              <NavDropdown.Item href="#action/3.2">
-                Another action
+            <Nav.Link as={Link} to={ROUTES.dashboard}>
+              {t("nav.dashboard")}
+            </Nav.Link>
+            <Nav.Link as={Link} to={ROUTES.websocket}>
+              {t("nav.websocket")}
+            </Nav.Link>
+            <Nav.Link as={Link} to={ROUTES.comments}>
+              {t("nav.comments")}
+            </Nav.Link>
+          </Nav>
+          <Nav className="align-items-lg-center gap-lg-2">
+            <LanguageSwitcher />
+            <NavDropdown
+              title={displayName}
+              id="account-nav-dropdown"
+              align="end"
+            >
+              <NavDropdown.Item as={Link} to={ROUTES.account}>
+                {t("nav.account")}
               </NavDropdown.Item>
-              <NavDropdown.Item href="#action/3.3">Something</NavDropdown.Item>
               <NavDropdown.Divider />
-              <NavDropdown.Item href="#action/3.4">
-                Separated link
+              <NavDropdown.Item onClick={logout}>
+                {t("nav.logout")}
               </NavDropdown.Item>
             </NavDropdown>
-          </Nav>
-          <Nav>
-            <Nav.Link href="#deets">More deets</Nav.Link>
-            <Nav.Link onClick={logout}>Logout</Nav.Link>
           </Nav>
         </Navbar.Collapse>
       </Container>

@@ -1,5 +1,6 @@
+from django.utils.translation import gettext_lazy as _
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from pgvector.django import CosineDistance
@@ -11,13 +12,15 @@ DEFAULT_LIMIT = 5
 
 
 class SimilarCommentsView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "embeddings"
+    serializer_class = SimilarCommentSerializer
 
     def get(self, request):
         text = request.query_params.get("text")
         if not text:
             return Response(
-                {"detail": "Query parameter 'text' is required."},
+                {"detail": _("Query parameter 'text' is required.")},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         query_embedding = embed_text(text)

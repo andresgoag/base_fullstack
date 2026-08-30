@@ -1,21 +1,22 @@
 import { useAuthContext } from "context/auth/AuthContext";
-import { Navigate, Outlet } from "react-router";
+import { LoadingScreen } from "components/LoadingScreen/LoadingScreen";
+import { Navigate, Outlet, useLocation } from "react-router";
+import { ROUTES } from "routes";
 
 export const ProtectedRoute = () => {
-  const { access, isInitializing } = useAuthContext();
+  const { session } = useAuthContext();
+  const location = useLocation();
 
-  if (isInitializing) {
+  if (session.isRestoring) return <LoadingScreen />;
+
+  if (!session.isAuthenticated) {
     return (
-      <div className="d-flex justify-content-center align-items-center min-vh-100">
-        <div className="spinner-border" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
+      <Navigate
+        to={ROUTES.login}
+        replace
+        state={{ from: `${location.pathname}${location.search}` }}
+      />
     );
-  }
-
-  if (!access) {
-    return <Navigate to="/auth/login" replace />;
   }
   return <Outlet />;
 };

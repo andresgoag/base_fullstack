@@ -4,3 +4,4 @@ COPY bun.lock package.json ./
 RUN bun install --frozen-lockfile
 COPY . .
 ENV HOST=0.0.0.0
+EXPOSE 5173

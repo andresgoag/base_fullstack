@@ -1,70 +1,50 @@
 import { AuthContext } from "./AuthContext";
-import { useState, useEffect, useCallback } from "react";
-import type { LoginResponse, User } from "models";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import type { LoginResponse, RegisterData } from "models";
 import { useToastContext } from "context/toast/ToastContext";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation, useNavigate } from "react-router";
+import { loginUser, blacklistToken } from "api/tokens";
+import { registerUser } from "api/users";
+import { useCurrentUser } from "queries/users";
 import {
-  loginUser,
-  registerUser,
-  refreshToken,
-  getUser,
-  blacklistToken,
-} from "api/auth";
-
-const USER_QUERY_STALE_TIME_MS = 60_000;
-const TOKEN_REFRESH_BUFFER_MS = 30_000;
+  ACCESS_TOKEN_REFRESH_BUFFER_MS,
+  endAuthSession,
+  ensureFreshAccessToken,
+  getAuthSession,
+  needsSessionRestore,
+  refreshAuthSession,
+  startAuthSession,
+  subscribeToAuthSession,
+  subscribeToSessionChangesInOtherTabs,
+} from "auth/authSession";
+import { getMillisecondsUntilRefresh } from "auth/jwt";
+import { getRedirectTarget, ROUTES } from "routes";
 
 type ContextProps = {
   children: React.ReactNode;
 };
 
-const getTokenExp = (token: string): number => {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.exp * 1000;
-  } catch {
-    return 0;
-  }
-};
+type RegistrationOutcome =
+  | { status: "signed-in"; tokens: LoginResponse }
+  | { status: "activation-required" };
 
 export const AuthContextProvider = ({ children }: ContextProps) => {
-  const [access, setAccess] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState<string | null>(null);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const session = useSyncExternalStore(subscribeToAuthSession, getAuthSession);
+  const [isRestoring, setIsRestoring] = useState(needsSessionRestore);
   const { showToast } = useToastContext();
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
 
   const logout = useCallback(() => {
-    const storedRefresh = localStorage.getItem("refresh");
-    localStorage.removeItem("refresh");
-    setAccess(null);
-    setRefresh(null);
-    queryClient.removeQueries({ queryKey: ["me"] });
-    if (storedRefresh) {
-      blacklistToken(storedRefresh).catch(() => {});
+    const { refresh } = getAuthSession();
+    endAuthSession();
+    if (refresh) {
+      void blacklistToken(refresh).catch(() => undefined);
     }
-    navigate("/auth/login");
-  }, [navigate, queryClient]);
-
-  const { mutate: refreshAccess } = useMutation({
-    mutationFn: refreshToken,
-    onSuccess: (data) => {
-      setAccess(data.access);
-      if ((data as LoginResponse).refresh) {
-        localStorage.setItem("refresh", (data as LoginResponse).refresh);
-        setRefresh((data as LoginResponse).refresh);
-      }
-    },
-    onError: (error: Error) => {
-      showToast({
-        message: `${error.message}, please log in again.`,
-        type: "danger",
-      });
-      logout();
-    },
-  });
+    void navigate(ROUTES.login);
+  }, [navigate]);
 
   const {
     mutate: login,
@@ -73,14 +53,10 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
     error: errorLogin,
   } = useMutation({
     mutationFn: loginUser,
-    onSuccess: (data: LoginResponse) => {
-      localStorage.setItem("refresh", data.refresh);
-      setAccess(data.access);
-      setRefresh(data.refresh);
-      navigate("/");
-    },
-    onError: (error: Error) => {
-      showToast({ message: error.message, type: "danger" });
+    onSuccess: (tokens) => {
+      queryClient.clear();
+      startAuthSession(tokens);
+      void navigate(getRedirectTarget(location.state), { replace: true });
     },
   });
 
@@ -90,77 +66,110 @@ export const AuthContextProvider = ({ children }: ContextProps) => {
     isError: isErrorRegister,
     error: errorRegister,
   } = useMutation({
-    mutationFn: registerUser,
-    onSuccess: () => {
-      navigate("/auth/login");
+    mutationFn: async (data: RegisterData): Promise<RegistrationOutcome> => {
+      await registerUser(data);
+      try {
+        const tokens = await loginUser({
+          email: data.email,
+          password: data.password,
+        });
+        return { status: "signed-in", tokens };
+      } catch {
+        return { status: "activation-required" };
+      }
     },
-    onError: (error: Error) => {
-      showToast({ message: error.message, type: "danger" });
+    onSuccess: (outcome) => {
+      if (outcome.status === "signed-in") {
+        queryClient.clear();
+        startAuthSession(outcome.tokens);
+        void navigate(ROUTES.dashboard, { replace: true });
+        return;
+      }
+      showToast({
+        message: "Account created. Check your email to activate it.",
+        type: "success",
+      });
+      void navigate(ROUTES.login);
     },
   });
 
-  const { data: currentUser, isLoading: isLoadingUser } = useQuery<User>({
-    queryKey: ["me", access],
-    queryFn: () => getUser(access!),
-    enabled: !!access,
-    staleTime: USER_QUERY_STALE_TIME_MS,
-  });
+  const { data: currentUser, isLoading: isLoadingUser } = useCurrentUser(
+    session.access !== null,
+  );
 
   useEffect(() => {
-    const storedRefresh = localStorage.getItem("refresh");
-    if (!storedRefresh) {
-      setIsInitializing(false);
-      return;
-    }
-    setRefresh(storedRefresh);
-    refreshToken(storedRefresh)
-      .then((data) => {
-        setAccess(data.access);
-        if ((data as LoginResponse).refresh) {
-          localStorage.setItem("refresh", (data as LoginResponse).refresh);
-          setRefresh((data as LoginResponse).refresh);
-        }
-      })
-      .catch(() => {
-        localStorage.removeItem("refresh");
-        setRefresh(null);
-      })
-      .finally(() => {
-        setIsInitializing(false);
-      });
+    void ensureFreshAccessToken().finally(() => {
+      setIsRestoring(false);
+    });
   }, []);
 
+  useEffect(() => subscribeToSessionChangesInOtherTabs(), []);
+
   useEffect(() => {
-    if (!access || !refresh) return;
-    const exp = getTokenExp(access);
-    const delay = exp - Date.now() - TOKEN_REFRESH_BUFFER_MS;
-    if (delay <= 0) {
-      refreshAccess(refresh);
-      return;
-    }
-    const timeout = setTimeout(() => {
-      refreshAccess(refresh);
-    }, delay);
-    return () => clearTimeout(timeout);
-  }, [access, refresh, refreshAccess]);
+    if (session.refresh === null) queryClient.clear();
+  }, [session.refresh, queryClient]);
+
+  useEffect(() => {
+    if (!session.access || !session.refresh) return;
+    const delay = getMillisecondsUntilRefresh(
+      session.access,
+      ACCESS_TOKEN_REFRESH_BUFFER_MS,
+    );
+    const timeout = setTimeout(
+      () => {
+        refreshAuthSession().catch(() => {
+          showToast({
+            message: "Your session expired, please log in again.",
+            type: "danger",
+          });
+        });
+      },
+      Math.max(delay, 0),
+    );
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [session.access, session.refresh, showToast]);
+
+  useEffect(() => {
+    const refreshOnWake = () => {
+      if (document.visibilityState !== "visible") return;
+      void ensureFreshAccessToken();
+    };
+    window.addEventListener("visibilitychange", refreshOnWake);
+    window.addEventListener("focus", refreshOnWake);
+    return () => {
+      window.removeEventListener("visibilitychange", refreshOnWake);
+      window.removeEventListener("focus", refreshOnWake);
+    };
+  }, []);
 
   return (
     <AuthContext.Provider
       value={{
-        access,
-        refresh,
-        login,
-        isPendingLogin,
-        isErrorLogin,
-        errorLogin,
+        session: {
+          access: session.access,
+          refresh: session.refresh,
+          isAuthenticated: session.access !== null,
+          isRestoring,
+        },
+        currentUser: {
+          user: currentUser ?? null,
+          isLoading: isLoadingUser,
+        },
+        login: {
+          submit: login,
+          isPending: isPendingLogin,
+          isError: isErrorLogin,
+          error: errorLogin,
+        },
+        register: {
+          submit: register,
+          isPending: isPendingRegister,
+          isError: isErrorRegister,
+          error: errorRegister,
+        },
         logout,
-        currentUser: currentUser ?? null,
-        isLoadingUser,
-        register,
-        isPendingRegister,
-        isErrorRegister,
-        errorRegister,
-        isInitializing,
       }}
     >
       {children}
